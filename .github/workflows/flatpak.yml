@@ -1,0 +1,110 @@
+name: Flatpak
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
+      options: --privileged
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: with-server
+            manifest: com.rini.kaghez.json
+            bundle: kaghez-with-server.flatpak
+            lfs: true
+          - variant: without-server
+            manifest: com.rini.kaghez-without-server.json
+            bundle: kaghez-without-server.flatpak
+            lfs: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: ${{ matrix.lfs }}
+
+      - name: Generate manifest without the embedded server
+        if: matrix.variant == 'without-server'
+        run: |
+          jq '
+            ."sdk-extensions" |= map(select(startswith("org.freedesktop.Sdk.Extension.openjdk21") | not))
+            | ."finish-args" |= map(
+                if . == "--env=PATH=/app/jre/bin:/app/bin:/usr/bin"
+                then "--env=PATH=/app/bin:/usr/bin"
+                else . end)
+            | .modules |= (
+                map(select(type != "object" or .name != "openjdk"))
+                | map(
+                    if type == "object" and .name == "kaghez"
+                    then .["config-opts"] = ((.["config-opts"] // []) + ["-Dembed-suwayomi-server=false"])
+                    else . end))
+          ' com.rini.kaghez.json > com.rini.kaghez-without-server.json
+
+          # Fail loudly if the main manifest drifted from what this job expects.
+          jq -e '
+            ((."sdk-extensions" | map(select(startswith("org.freedesktop.Sdk.Extension.openjdk21"))) | length) == 0)
+            and (([.modules[] | select(type == "object" and .name == "openjdk")] | length) == 0)
+            and (([.modules[] | select(type == "object" and .name == "kaghez")
+                  | ((.["config-opts"] // []) | index("-Dembed-suwayomi-server=false")) != null] | length) == 1)
+          ' com.rini.kaghez-without-server.json > /dev/null
+
+      - name: Verify the embedded Suwayomi server came from Git LFS
+        if: matrix.variant == 'with-server'
+        run: |
+          set -- src/Suwayomi-Server-*.jar
+          if [ ! -e "$1" ]; then
+            echo "::error::No Suwayomi server jar found in src/"
+            exit 1
+          fi
+          size=$(wc -c < "$1")
+          if [ "$size" -lt 1000000 ]; then
+            echo "::error::Expected the real $1 from Git LFS, got $size bytes (pointer file?)"
+            exit 1
+          fi
+          echo "$1: $size bytes"
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: ${{ matrix.manifest }}
+          bundle: ${{ matrix.bundle }}
+          artifact-name: ${{ matrix.bundle }}
+
+  release:
+    name: Release ${{ github.sha }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release for this commit
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.sha }}
+          target_commitish: ${{ github.sha }}
+          name: Kaghez build ${{ github.sha }}
+          body: |
+            Automated build of `${{ github.sha }}`.
+
+            - **kaghez-with-server.flatpak** — includes the embedded Suwayomi server and a JRE to run it.
+            - **kaghez-without-server.flatpak** — no embedded server; connect to a remote Suwayomi instance.
+          files: dist/*.flatpak
+          fail_on_unmatched_files: true

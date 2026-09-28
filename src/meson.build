@@ -88,7 +88,9 @@ kaghez_sources = [
 ]
 
 install_data(kaghez_sources, install_dir: moduledir)
-install_data('Suwayomi-Server-v2.3.2361.jar', install_dir: pkgdatadir)
+if get_option('embed-suwayomi-server')
+  install_data('Suwayomi-Server-v2.3.2361.jar', install_dir: pkgdatadir)
+endif
 
 subdir('integrations')
 subdir('widgets')

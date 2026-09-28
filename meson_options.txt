@@ -1,0 +1,5 @@
+option('embed-suwayomi-server',
+  type: 'boolean',
+  value: true,
+  description: 'Install the bundled Suwayomi server jar used by the local managed server',
+)

@@ -14,6 +14,10 @@ class SetupWindow(Adw.ApplicationWindow):
     def __init__(self, error: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.app = Gio.Application.get_default()
+        if self.app.find_bundled_jar() is None:
+            self.local_row.set_visible(False)
+            if not error:
+                self.status_page.set_description("Connect to a Suwayomi server to get started")
         if error:
             self.status_page.set_description(error)
 
