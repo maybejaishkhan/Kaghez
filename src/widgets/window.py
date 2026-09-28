@@ -13,6 +13,78 @@ from .reader import ReaderPage
 SWIPE_COMMIT_DISTANCE = 40.0
 SWIPE_COMMIT_VELOCITY = 600.0
 
+# Mouse side buttons (X11 "Button 4 / Button 5" in the user's words) arrive in
+# GTK4/GDK as button numbers 8 (Back/previous) and 9 (Forward/next).
+# GDK buttons 4-7 are scroll directions, so those must NOT be used here.
+MOUSE_BACK_BUTTON = 8
+MOUSE_FORWARD_BUTTON = 9
+
+FORWARD_HISTORY_LIMIT = 50
+
+
+def _forward_key(nav_view):
+    """Stable identity key for a NavigationView's forward stack.
+
+    Keyed on the view itself: ``get_navigation_stack()`` returns a new
+    Gio.ListModel wrapper object on every call, so ``id()`` of it is
+    useless as a dict key (it changes between popped/pushed/get-next-page
+    for the same view).
+    """
+    return ("view", id(nav_view))
+
+
+def forward_push(stacks, nav_view, page, limit=FORWARD_HISTORY_LIMIT):
+    """Record a popped page on the view's forward stack (browser-style redo).
+
+    Pure helper (no GTK calls) so the history semantics are headless-testable.
+    Returns True if the page was recorded.
+    """
+    if page is None:
+        return False
+    key = _forward_key(nav_view)
+    stack = stacks.setdefault(key, [])
+    if stack and stack[-1] is page:
+        return False
+    stack.append(page)
+    del stack[:max(len(stack) - limit, 0)]
+    return True
+
+
+def forward_peek(stacks, nav_view):
+    """Return the top of the view's forward stack without removing it.
+
+    Must be non-destructive: Adw may emit ``get-next-page`` several times for
+    a single (possibly cancelled) forward gesture, so removal happens in the
+    ``pushed`` handler instead.
+    """
+    stack = stacks.get(_forward_key(nav_view))
+    if not stack:
+        return None
+    return stack[-1]
+
+
+def on_history_pushed(stacks, nav_view, page):
+    """Update forward history after a page was pushed onto a NavigationView.
+
+    - Forward navigation completing: the pushed page is the top of the forward
+      stack -> drop it from the stack (it is visible again).
+    - Fresh navigation (opened a new manga/source/reader): any redo history
+      is invalidated -> clear the stack (browser semantics).
+    """
+    key = _forward_key(nav_view)
+    stack = stacks.get(key)
+    if not stack:
+        return
+    if stack and stack[-1] is page:
+        stack.pop()
+    else:
+        stack.clear()
+
+
+def on_history_popped(stacks, nav_view, page):
+    """Record a popped page so Forward can re-push it later."""
+    forward_push(stacks, nav_view, page)
+
 
 @Gtk.Template(resource_path='/com/rini/kaghez/window.ui')
 class KaghezWindow(Adw.ApplicationWindow):
@@ -21,6 +93,11 @@ class KaghezWindow(Adw.ApplicationWindow):
     main_stack = Gtk.Template.Child()
     overlay_split_view = Gtk.Template.Child()
     main_nav_view = Gtk.Template.Child()
+    home_nav_view = Gtk.Template.Child()
+    library_nav_view = Gtk.Template.Child()
+    search_nav_view = Gtk.Template.Child()
+    browse_nav_view = Gtk.Template.Child()
+    downloads_nav_view = Gtk.Template.Child()
     toast_overlay = Gtk.Template.Child()
 
     header_bar = Gtk.Template.Child()
@@ -28,6 +105,13 @@ class KaghezWindow(Adw.ApplicationWindow):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        # Browser-style forward history: one redo stack per NavigationView.
+        # Popped pages are kept alive here so Forward can re-push them
+        # (dynamic pages are destroyed on pop otherwise). Keyed by view;
+        # see _forward_key().
+        self._forward_history = {}
+        self._tracked_nav_views = []
 
         list(list(list(list(list(list(self.header_bar)[0])[0])[1])[0])[0])[0].set_ellipsize(Pango.EllipsizeMode.NONE)
 
@@ -61,6 +145,8 @@ class KaghezWindow(Adw.ApplicationWindow):
         self.overlay_split_view.add_controller(scroll_controller)
         self.swipe_accum = 0.0
         self.swipe_start_time = 0.0
+
+        self._setup_side_button_navigation()
 
     def create_action(self, callback: callable, shortcuts: list | None = None, parameter_type: str = "s"):
         shortcuts = shortcuts or []
@@ -115,3 +201,83 @@ class KaghezWindow(Adw.ApplicationWindow):
                 return
 
         self.swipe_accum = 0.0
+
+    def _setup_side_button_navigation(self):
+        # Forward history: enable the native Forward mouse button
+        # (button 9) via get-next-page + per-view redo stacks fed by popped.
+        # NOTE: we deliberately do NOT intercept the Back mouse button
+        # (button 8) ourselves: Adw.NavigationView already pops natively,
+        # and grabbing it here as well would double-pop (skip a screen).
+        for nav_view in self._all_nav_views():
+            self._track_nav_view(nav_view)
+
+    def _all_nav_views(self):
+        views = [self.main_nav_view]
+        for name in (
+            "home_nav_view",
+            "library_nav_view",
+            "search_nav_view",
+            "browse_nav_view",
+            "downloads_nav_view",
+        ):
+            try:
+                view = getattr(self, name)
+            except Exception:
+                continue
+            if view is not None and view not in views:
+                views.append(view)
+        for view in self._find_source_nav_views():
+            if view not in views:
+                views.append(view)
+        return views
+
+    def _find_source_nav_views(self):
+        found = []
+
+        def walk(widget):
+            try:
+                child = widget.get_first_child()
+            except Exception:
+                return
+            while child is not None:
+                if isinstance(child, Adw.NavigationView):
+                    found.append(child)
+                try:
+                    walk(child)
+                    child = child.get_next_sibling()
+                except Exception:
+                    break
+
+        try:
+            walk(self)
+        except Exception:
+            pass
+        return found
+
+    def _track_nav_view(self, nav_view):
+        if nav_view is None or nav_view in self._tracked_nav_views:
+            return
+        self._tracked_nav_views.append(nav_view)
+        nav_view.connect("popped", self._on_nav_view_popped)
+        nav_view.connect("pushed", self._on_nav_view_pushed)
+        try:
+            nav_view.connect("get-next-page", self._on_get_next_page)
+        except Exception:
+            pass
+
+    def _on_nav_view_popped(self, nav_view, page):
+        on_history_popped(self._forward_history, nav_view, page)
+
+    def _on_nav_view_pushed(self, nav_view, *args):
+        try:
+            page = nav_view.get_visible_page()
+        except Exception:
+            page = args[0] if args else None
+        on_history_pushed(self._forward_history, nav_view, page)
+        for view in self._find_source_nav_views():
+            self._track_nav_view(view)
+
+    def _on_get_next_page(self, nav_view):
+        # Peek only: Adw may emit this repeatedly for one (possibly
+        # cancelled) gesture; the entry is consumed in "pushed".
+        return forward_peek(self._forward_history, nav_view)
