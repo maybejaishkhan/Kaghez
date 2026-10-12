@@ -1,0 +1,56 @@
+name: Flatpak
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    steps:
+      # The Suwayomi jar is stored in Git LFS. Without lfs: true the bundle
+      # ships the ~130 byte pointer file and the local server can't start.
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Check the server jar
+        run: |
+          jar=$(ls src/Suwayomi-Server-*.jar)
+          size=$(stat -c %s "$jar")
+          echo "$jar: $size bytes"
+          if [ "$size" -lt 1000000 ]; then
+            echo "$jar is a Git LFS pointer, not the real jar" >&2
+            exit 1
+          fi
+
+      # The runtime comes from gnome-nightly, but the SDK extensions only
+      # exist on Flathub, so flatpak-builder can't install them itself.
+      # The branch follows the freedesktop SDK the GNOME runtime is built on.
+      - name: Install SDK extensions from Flathub
+        run: |
+          flatpak --system install -y --noninteractive flathub \
+            org.freedesktop.Sdk.Extension.rust-stable//26.08 \
+            org.freedesktop.Sdk.Extension.openjdk21//26.08
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: com.rini.kaghez.flatpak
+          manifest-path: com.rini.kaghez.json
+          # The manifest targets the GNOME nightly runtime (master).
+          repository-name: gnome-nightly
+          repository-url: https://nightly.gnome.org/gnome-nightly.flatpakrepo
+          cache-key: flatpak-builder-${{ hashFiles('com.rini.kaghez.json', 'python3-*.json') }}
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: com.rini.kaghez.flatpak
