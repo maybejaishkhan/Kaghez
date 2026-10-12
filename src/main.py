@@ -265,3 +265,4 @@ def main(version: str) -> int:
     set_version(version)
     return KaghezApplication(version).run(sys.argv)
 
+

@@ -119,3 +119,4 @@ class KaghezWindow(Adw.ApplicationWindow):
                 return
 
         self.swipe_accum = 0.0
+

@@ -103,14 +103,10 @@ template $KaghezMangaPage : Adw.NavigationPage {
           }
 
           [poster]
-          Gtk.Picture poster {
-            styles [
-              "rounded"
-            ]
-
-            paintable: bind template.model as <$KaghezManga> .paintable;
-            content-fit: cover;
-            height-request: 300;
+          $KaghezMangaCard card {
+            model: bind template.model;
+            width-request: 185;
+            show_title: false;
           }
 
           [title_author]

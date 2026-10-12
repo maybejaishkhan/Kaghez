@@ -4,6 +4,7 @@ from gi.repository import Gtk, Adw, GObject, Gio, GLib
 
 from ...integrations import models
 
+from .card import MangaCard
 
 def markdown_to_pango(md: str) -> str:
     if md is None:

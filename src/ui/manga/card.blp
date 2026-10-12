@@ -27,6 +27,7 @@ template $KaghezMangaCard : Gtk.Box {
       "heading"
     ]
     text: bind template.model as <$KaghezManga> .title;
+    visible: bind template.show_title;
     xalign: 0.0;
     text-overflow: ellipsize_end;
   }

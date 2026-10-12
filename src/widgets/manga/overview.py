@@ -109,13 +109,10 @@ class MangaOverview(Gtk.Box):
 
     genres = Gtk.Template.Child()
 
-    card = Gtk.Template.Child()
-
     def __init__(self, model):
         super().__init__()
         self.model = model
         self.populate_genres()
-        self.card.title.set_visible(False)
 
         if self.model.paintable is None and self.model.thumbnail_url:
             self.suwayomi = Gio.Application.get_default().suwayomi
