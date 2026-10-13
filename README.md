@@ -3,6 +3,8 @@
 
 Kaori allows you to discover, download and read comics with a beautiful looking UI, and natural touchpad gestures.
 
+The name Kaori is a small tribute to Kaori Miyazono from *Your Lie in April*, a character who left a lasting impression on me.
+
 ## Features
 
 - A beautiful libadwaita UI
