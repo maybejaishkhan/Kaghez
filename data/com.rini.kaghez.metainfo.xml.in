@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Riyan Parvez -->
 <component type="desktop-application">
   <id>com.rini.kaghez</id>
 
@@ -6,18 +7,20 @@
   <project_license>GPL-3.0-only</project_license>
 
   <name>Kaori</name>
-  <summary>Discover and read comics on your device</summary>
+  <summary>Discover and read comics</summary>
+
+  <developer id="io.github.riyaniii">
+    <name>Riyan Parvez</name>
+  </developer>
 
   <description>
     <p>
-      Kaori allows you to discover, download and read comics with a beautiful
-      looking UI, and natural touchpad gestures.
+      Discover, download and read comics with a beautiful interface and
+      natural touchpad gestures.
     </p>
   </description>
 
-  <developer>
-    <name>Riyan Parvez</name>
-  </developer>
+  <launchable type="desktop-id">com.rini.kaghez.desktop</launchable>
 
   <url type="homepage">https://github.com/riyaniii/Kaori</url>
   <url type="vcs-browser">https://github.com/riyaniii/Kaori</url>
@@ -27,8 +30,6 @@
 
   <translation type="gettext">kaghez</translation>
 
-  <launchable type="desktop-id">com.rini.kaghez.desktop</launchable>
-
   <content_rating type="oars-1.1"/>
 
   <branding>
@@ -36,27 +37,29 @@
     <color type="primary" scheme_preference="dark">#3F4F82</color>
   </branding>
 
+   <requires>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
   <screenshots>
     <screenshot type="default">
       <image>https://github.com/user-attachments/assets/985faef7-77a9-4ede-b8e9-c1b8421c54b6</image>
       <caption>Home</caption>
     </screenshot>
-
     <screenshot>
       <image>https://github.com/user-attachments/assets/b937ceb0-4049-4733-a778-b565908b44bf</image>
       <caption>Search</caption>
     </screenshot>
-
     <screenshot>
       <image>https://github.com/user-attachments/assets/11405fb5-f572-4c72-b442-2be75cbb2c40</image>
       <caption>Reader</caption>
     </screenshot>
-
     <screenshot>
       <image>https://github.com/user-attachments/assets/09768716-077c-4f63-80d3-a29f62b5d03b</image>
       <caption>Comic Details</caption>
     </screenshot>
-
     <screenshot>
       <image>https://github.com/user-attachments/assets/7fa8d539-2b09-499e-a7fc-f95684a4904d</image>
       <caption>Downloads</caption>
@@ -64,6 +67,16 @@
   </screenshots>
 
   <releases>
+    <release version="0.9.2" date="2026-10-13">
+      <url type="details">https://github.com/riyaniii/Kaori/releases/tag/v0.9.2</url>
+      <description translate="no">
+        <ul>
+          <li>Comic cards maintain their aspect ratios.</li>
+          <li>UI tweaks.</li>
+          <li>Updated Suwayomi-Server.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.0" date="2026-10-11">
       <url type="details">https://github.com/riyaniii/Kaori/releases/tag/v0.9.0</url>
       <description translate="no">
@@ -78,15 +91,10 @@
       </description>
     </release>
     <release version="0.8.8" date="2026-09-23">
-      <url type="details">
-        https://github.com/riyaniii/Kaori/releases/tag/v0.8.8
-      </url>
+      <url type="details">https://github.com/riyaniii/Kaori/releases/tag/v0.8.8</url>
       <description translate="no">
-        <p>
-          Added managed server.
-        </p>
+        <p>Added managed server.</p>
       </description>
     </release>
   </releases>
 </component>
-
