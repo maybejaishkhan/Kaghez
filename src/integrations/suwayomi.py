@@ -79,6 +79,7 @@ class Suwayomi(GObject.Object):
         super().__init__()
         self.loaded_models = {}
         self.pending = {}
+        self.closing = set()
         self.session = None
         self.connect_lock = asyncio.Lock()
         self.client = makeClient(self.url)
@@ -107,16 +108,34 @@ class Suwayomi(GObject.Object):
         self.languages = ["en", "all"]
 
     def reconnect(self, url: str):
+        """Switch to a new URL; the old client is closed in the background."""
+        old_client, had_session = self.client, self.session is not None
         self.session = None
         self.url = url
         self.client = makeClient(url)
+        if had_session:
+            task = asyncio.get_running_loop().create_task(old_client.close_async())
+            self.closing.add(task)
+            task.add_done_callback(self.closing.discard)
+
+    async def disconnect(self):
+        """Close the current connection and prepare a fresh client for later use."""
+        old_client, had_session = self.client, self.session is not None
+        self.session = None
+        self.client = makeClient(self.url)
+        if had_session:
+            await old_client.close_async()
 
     async def close(self):
-        if self.session is not None:
-            await self.client.close_async()
-            self.session = None
-        await self.http.aclose()
-        await asyncio.to_thread(self.cache.close)
+        try:
+            if self.session is not None:
+                client, self.session = self.client, None
+                await client.close_async()
+            if self.closing:
+                await asyncio.gather(*list(self.closing), return_exceptions=True)
+        finally:
+            await self.http.aclose()
+            self.cache.close()
 
     async def getSession(self):
         if self.session is None:
@@ -130,19 +149,12 @@ class Suwayomi(GObject.Object):
             try:
                 session = await self.getSession()
                 return await session.execute(gql_query, variable_values=variable_values) or {}
-            except TimeoutError:
-                if attempt < retries:
+            except Exception as exc:
+                if isinstance(exc, TimeoutError) and attempt < retries:
                     continue
-                print(f"[query] timed out after {attempt + 1} attempt(s)")
                 if raise_errors:
                     raise
                 return {}
-            except Exception as e:
-                print(f"[query] request failed: {type(e).__name__}: {e}")
-                if raise_errors:
-                    raise
-                return {}
-        return {}
 
     async def shared(self, key, factory):
         if key not in self.pending:
@@ -159,8 +171,7 @@ class Suwayomi(GObject.Object):
         try:
             response = await self.http.get(url)
             response.raise_for_status()
-        except httpx.HTTPError as e:
-            print(f"[loadBytes] request failed for {url}: {type(e).__name__}: {e}")
+        except httpx.HTTPError:
             return None
 
         await asyncio.to_thread(self.cache.set, url, response.content)
@@ -173,8 +184,7 @@ class Suwayomi(GObject.Object):
         try:
             async with self.decode_slots:
                 return await asyncio.to_thread(self.makeTexture, raw_bytes)
-        except GLib.Error as e:
-            print(f"[getPaintable] decode failed for {url}: {e.message}")
+        except GLib.Error:
             await asyncio.to_thread(self.cache.delete, url)
             return None
 
@@ -609,10 +619,8 @@ class Suwayomi(GObject.Object):
         return {meta['key']: meta['value'] for meta in nodes or []}
 
     def readMeta(self, values: dict, key: str):
-        try:
-            return json.loads(values[key])
-        except (KeyError, json.JSONDecodeError):
-            return None
+        value = values.get(key)
+        return json.loads(value) if value else None
 
     def parseReaderSettings(self, values: dict) -> dict:
         settings = {}

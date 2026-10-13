@@ -1,11 +1,8 @@
 import asyncio
 import os
-import shutil
-import signal
+import subprocess
 import sys
-import threading
-import traceback
-from gettext import gettext as _
+import time
 
 import gi
 
@@ -24,110 +21,31 @@ from .widgets.preferences import KaghezPreferences
 from .widgets.setup import SetupWindow
 
 APPLICATION_ID = 'com.rini.kaghez'
-JAR_NAME = 'Suwayomi-Server.jar'
+JAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                   'Suwayomi-Server.jar')
+
 LOCAL_URL = 'http://localhost:4567'
-
-READY_TIMEOUT = 60.0
+READY_TIMEOUT = 60
 POLL_INTERVAL = 0.5
-SHUTDOWN_TIMEOUT = 5.0
 
-SERVER_JVM_ARGS = (
+SERVER_CMD = [
+    'java',
     '-Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false',
     '-Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false',
     '-Dsuwayomi.tachidesk.config.server.kcefEnabled=false',
-)
+    '-jar', JAR,
+]
 
 
-class LocalServer:
-    def __init__(self) -> None:
-        self.proc: Gio.Subprocess | None = None
-        self.pump: asyncio.Task | None = None
-        self.exited = False
-
-    @property
-    def running(self) -> bool:
-        return self.proc is not None and not self.exited
-
-    @staticmethod
-    def jar_path() -> str | None:
-        pkgdatadir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        path = os.path.join(pkgdatadir, JAR_NAME)
-        return path if os.path.isfile(path) else None
-
-    def start(self) -> bool:
-        if self.running:
-            return True
-
-        jar = self.jar_path()
-        if not jar:
-            print('[server] bundled Suwayomi jar not found')
-            return False
-
-        java = shutil.which('java')
-        if not java:
-            print('[server] Java runtime not found in PATH')
-            return False
-
-        launcher = Gio.SubprocessLauncher.new(
-            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_MERGE)
-        try:
-            self.proc = launcher.spawnv([java, *SERVER_JVM_ARGS, '-jar', jar])
-        except GLib.Error as e:
-            print(f'[server] failed to start: {e.message}')
-            self.proc = None
-            return False
-
-        self.exited = False
-        self.proc.wait_async(None, self._on_exit)
-        self.pump = asyncio.create_task(self._pump_output(self.proc))
-        return True
-
-    def stop(self) -> None:
-        if self.pump:
-            self.pump.cancel()
-            self.pump = None
-
-        proc, self.proc = self.proc, None
-        if proc is None or self.exited:
-            self.exited = False
-            return
-
-        proc.send_signal(signal.SIGTERM)
-        cancellable = Gio.Cancellable()
-        timer = threading.Timer(SHUTDOWN_TIMEOUT, cancellable.cancel)
-        timer.start()
-        try:
-            proc.wait(cancellable)
-        except GLib.Error:
-            print('[server] did not exit in time, killing it')
-            proc.force_exit()
-        finally:
-            timer.cancel()
-        self.exited = False
-
-    def _on_exit(self, proc: Gio.Subprocess, result: Gio.AsyncResult) -> None:
-        try:
-            proc.wait_finish(result)
-            if proc.get_if_exited():
-                print(f'[server] exited with status {proc.get_exit_status()}')
-            elif proc.get_if_signaled():
-                print(f'[server] terminated by signal {proc.get_term_sig()}')
-        except GLib.Error as e:
-            print(f'[server] wait failed: {e.message}')
-        if proc is self.proc:
-            self.exited = True
-
-    @staticmethod
-    async def _pump_output(proc: Gio.Subprocess) -> None:
-        stream = Gio.DataInputStream.new(proc.get_stdout_pipe())
-        try:
-            while True:
-                line, _length = await stream.read_line_async(GLib.PRIORITY_DEFAULT)
-                if line is None:
-                    break
-                print(f'[suwayomi] {line.decode(errors="replace")}')
-        except GLib.Error as e:
-            print(f'[suwayomi] {e.message}')
+def run_until_done(coro, timeout: float) -> None:
+    task = asyncio.ensure_future(coro)
+    context = GLib.MainContext.default()
+    deadline = time.monotonic() + timeout
+    while not task.done() and time.monotonic() < deadline:
+        if not context.iteration(False):
+            time.sleep(0.01)
+    if not task.done():
+        task.cancel()
 
 
 class KaghezApplication(Adw.Application):
@@ -139,7 +57,7 @@ class KaghezApplication(Adw.Application):
         self.version = version
         self.settings = Gio.Settings(schema_id=APPLICATION_ID)
         self.suwayomi = Suwayomi()
-        self.server = LocalServer()
+        self.server: subprocess.Popen | None = None
 
         self.create_action('quit', lambda *_: self.quit(), ['<control>q'])
         self.create_action('preferences', self.on_preferences_action, ['<control>comma'])
@@ -147,7 +65,6 @@ class KaghezApplication(Adw.Application):
                            ['<control>question', '<control>slash'])
         self.create_action('about', self.on_about_action)
         self.create_action('change_instance', self.on_change_instance_action)
-
 
     def do_activate(self) -> None:
         if win := self.props.active_window:
@@ -160,41 +77,41 @@ class KaghezApplication(Adw.Application):
             return
 
         self.hold()
-        task = asyncio.create_task(
+        asyncio.create_task(
             self.launch_or_setup(mode, self.settings.get_string('suwayomi-url')))
-        task.add_done_callback(self.log_task_error)
 
     def do_shutdown(self) -> None:
-        self.server.stop()
-        self.suwayomi.shutdown()
+        run_until_done(self.suwayomi.close(), 5)
+        self.stop_server()
         Adw.Application.do_shutdown(self)
 
-    @staticmethod
-    def log_task_error(task: asyncio.Task) -> None:
-        if not task.cancelled() and (exc := task.exception()):
-            traceback.print(_exception(exc))
+    def start_server(self) -> None:
+        self.server = subprocess.Popen(
+            SERVER_CMD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def stop_server(self) -> None:
+        if self.server:
+            self.server.terminate()
+            self.server.wait()
+            self.server = None
 
     async def launch_or_setup(self, mode: str, url: str) -> None:
         try:
             if not await self.launch(mode, url):
                 self.show_setup_window(
-                    error=_("Couldn't reconnect. Check your setup and try again."))
+                    error="Couldn't reconnect. Check your setup and try again.")
         finally:
             self.release()
 
     async def launch(self, mode: str, url: str) -> bool:
-        """Connect to a local or remote server and open the main window."""
         local = mode == 'local'
-        if local and not self.server.start():
-            return False
-        if not local and not url:
-            return False
-
+        if local:
+            self.start_server()
         self.suwayomi.reconnect(LOCAL_URL if local else url)
 
         if not await self.wait_for_server():
-            if local:
-                self.server.stop()
+            await self.suwayomi.disconnect()
+            self.stop_server()
             return False
 
         self.settings.set_string('suwayomi-mode', mode)
@@ -203,29 +120,21 @@ class KaghezApplication(Adw.Application):
         return True
 
     async def wait_for_server(self) -> bool:
-        """Poll until the server answers, it dies, or the timeout expires.
-
-        The GraphQL session is reused across polls: connection errors surface
-        per request, so the same session recovers as soon as the server is up.
-        """
         loop = asyncio.get_running_loop()
         deadline = loop.time() + READY_TIMEOUT
         while loop.time() < deadline:
-            if self.server.proc is not None and self.server.exited:
-                print('[server] process exited before becoming ready')
+            if self.server and self.server.poll() is not None:
                 return False
             if await self.suwayomi.getServerSettings():
                 return True
             await asyncio.sleep(POLL_INTERVAL)
-        print(f'[server] not ready after {READY_TIMEOUT:.0f}s')
         return False
-
 
     def show_setup_window(self, error: str | None = None) -> None:
         SetupWindow(application=self, error=error).present()
 
     def on_change_instance_action(self, *args) -> None:
-        self.server.stop()
+        self.stop_server()
         if win := self.props.active_window:
             for dialog in list(win.get_dialogs()):
                 dialog.force_close()
@@ -238,13 +147,12 @@ class KaghezApplication(Adw.Application):
             application_icon=APPLICATION_ID,
             developer_name='Riyan Parvez',
             version=self.version,
-            translator_credits=_('translator-credits'),
             developers=['Riyan Parvez (rini)'],
             designers=['Riyan Parvez (rini)'],
             copyright='© 2026 Riyan Parvez',
-            issue_url='https://github.com/riyaniii/Kaghez/issues',
+            issue_url='https://github.com/riyaniii/Kaori/issues',
             license='GPL-3.0-or-later',
-            website='https://github.com/riyaniii/Kaghez',
+            website='https://github.com/riyaniii/Kaori',
         ).present(self.props.active_window)
 
     def on_preferences_action(self, *args) -> None:
@@ -264,5 +172,3 @@ class KaghezApplication(Adw.Application):
 def main(version: str) -> int:
     set_version(version)
     return KaghezApplication(version).run(sys.argv)
-
-

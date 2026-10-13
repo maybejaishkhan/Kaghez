@@ -13,8 +13,6 @@ POOL_MAX = 6
 
 
 class Panel(Gtk.Stack):
-    """One page: its picture, a spinner until it loads, or a chapter banner."""
-
     __gtype_name__ = "KaghezPanel"
 
     def __init__(self):

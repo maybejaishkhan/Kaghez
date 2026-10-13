@@ -13,7 +13,10 @@ from .double import DoublePageReader
 
 LAST_PAGE = 10**6
 SETTINGS_SAVE_DELAY = 500
-HEADER_HOVER_HEIGHT = 56
+HEADER_HOVER_HEIGHT = 48
+HEADER_HIDE_DELAY = 1500
+
+CTRL_KEYS = (Gdk.KEY_Control_L, Gdk.KEY_Control_R)
 
 ORIENTATIONS = {
     "vertical": Gtk.Orientation.VERTICAL,
@@ -102,14 +105,16 @@ class ReaderPage(Adw.NavigationPage):
         self.add_controller(key_controller)
 
         focus_controller = Gtk.EventControllerFocus()
-        focus_controller.connect("leave", lambda controller: self.webtoon.stop_scrolling())
+        focus_controller.connect("leave", self.on_focus_leave)
         self.add_controller(focus_controller)
 
         back_click = Gtk.GestureClick(button=8)
         back_click.connect("pressed", lambda gesture, n_press, x, y: self.go_back())
         self.add_controller(back_click)
 
+        self.held_ctrl_keys = set()
         self.pointer_in_zone = True
+        self.hide_header_id = 0
         self.root_handlers = []
 
         motion_controller = Gtk.EventControllerMotion(propagation_phase=Gtk.PropagationPhase.CAPTURE)
@@ -134,6 +139,10 @@ class ReaderPage(Adw.NavigationPage):
         self.connect("shown", lambda page: self.restore_focus())
 
         self.start_load(chapter_model, resume_position=self.initial_resume_position(chapter_model))
+
+    def on_focus_leave(self, controller):
+        self.held_ctrl_keys.clear()
+        self.webtoon.stop_scrolling()
 
     def on_root_changed(self, *args):
         for obj, handler_id in self.root_handlers:
@@ -168,7 +177,22 @@ class ReaderPage(Adw.NavigationPage):
             or root.overlay_split_view.get_show_sidebar()
             or (self.header_focus.props.contains_focus and root.get_focus_visible())
         )
-        self.revealer.set_reveal_child(keep_open)
+
+        if keep_open:
+            self.cancel_header_hide()
+            self.revealer.set_reveal_child(True)
+        elif self.revealer.get_reveal_child() and not self.hide_header_id:
+            self.hide_header_id = GLib.timeout_add(HEADER_HIDE_DELAY, self.hide_header)
+
+    def hide_header(self):
+        self.hide_header_id = 0
+        self.revealer.set_reveal_child(False)
+        return GLib.SOURCE_REMOVE
+
+    def cancel_header_hide(self):
+        if self.hide_header_id:
+            GLib.source_remove(self.hide_header_id)
+            self.hide_header_id = 0
 
     @property
     def stored_chapter_id(self):
@@ -216,6 +240,7 @@ class ReaderPage(Adw.NavigationPage):
         self.change_chapter(direction, LAST_PAGE if direction < 0 else None)
 
     def on_unrealize(self, page):
+        self.cancel_header_hide()
         for task in (self.load_task, self.settings_task):
             if task is not None:
                 task.cancel()
@@ -245,7 +270,12 @@ class ReaderPage(Adw.NavigationPage):
 
     def on_key_pressed(self, controller, keyval, keycode, state):
         rtl = self.direction == Gtk.TextDirection.RTL
-        ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK)
+
+        if keyval in CTRL_KEYS:
+            self.held_ctrl_keys.add(keyval)
+            return False
+
+        ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK) or bool(self.held_ctrl_keys)
 
         if keyval == Gdk.KEY_Escape:
             self.go_back()
@@ -300,6 +330,9 @@ class ReaderPage(Adw.NavigationPage):
         return False
 
     def on_key_released(self, controller, keyval, keycode, state):
+        if keyval in CTRL_KEYS:
+            self.held_ctrl_keys.discard(keyval)
+            return
         if self.scroll_direction(keyval) == self.webtoon.scroll_direction:
             self.webtoon.stop_scrolling()
 

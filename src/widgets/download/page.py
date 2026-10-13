@@ -114,7 +114,7 @@ class DownloadsPage(Adw.NavigationPage):
         self.update_header(header)
 
     def update_header(self, header):
-        item = header.get_item()  # first download of the section
+        item = header.get_item()
         header.get_child().set_label(item.manga_title if item else "")
 
     def update_stack(self):

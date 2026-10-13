@@ -91,7 +91,7 @@ kaghez_sources = [
 
 install_data(kaghez_sources, install_dir: moduledir)
 install_data(
-  'Suwayomi-Server-v2.4.2422.jar',
+  'Suwayomi-Server-v2.3.2243.jar',
   install_dir: pkgdatadir,
   rename: 'Suwayomi-Server.jar',
 )

@@ -1,5 +1,6 @@
 import asyncio
-from gi.repository import Gio, GLib, GObject, Gtk
+import math
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from ...integrations import models
 from .base import ReaderBase, adjacent_chapter
@@ -8,6 +9,12 @@ from .canvas import Canvas
 PREFETCH_PAGES = 6
 BANNER_RATIO = 2.2
 SCROLL_SPEED = 800
+SCROLL_ACCEL_TIME = 0.08
+SCROLL_DECEL_TIME = 0.18
+SCROLL_STOP_SPEED = 5
+MAX_FRAME_DELTA = 0.05
+PAGE_SCROLL_DURATION = 250
+PAGE_SCROLL_RATIO = 0.9
 
 class TransitionPage(models.Page):
     def __init__(self, chapter):
@@ -32,8 +39,13 @@ class WebtoonReader(ReaderBase):
         self.loading = set()
 
         self.scroll_direction = 0
+        self.scroll_velocity = 0.0
         self.tick_id = 0
         self.last_frame_time = 0
+
+        self.page_animation = None
+        self.page_progress = 0.0
+        self.page_target = 0.0
 
         self.canvas.bind_store(self.store)
         for name in ("orientation", "direction"):
@@ -65,9 +77,42 @@ class WebtoonReader(ReaderBase):
         self.canvas.set_zoom_anchored(value, x, y)
 
     def scroll_page(self, direction):
-        self.canvas.scroll_page(direction)
+        horizontal = self.orientation == Gtk.Orientation.HORIZONTAL
+        size = self.canvas.get_width() if horizontal else self.canvas.get_height()
+        distance = direction * size * PAGE_SCROLL_RATIO
+
+        if self.page_animation is not None:
+            distance += self.page_target - self.page_progress
+            self.page_animation.pause()
+
+        self.page_progress = 0.0
+        self.page_target = distance
+        self.page_animation = Adw.TimedAnimation.new(
+            self,
+            0.0,
+            distance,
+            PAGE_SCROLL_DURATION,
+            Adw.CallbackAnimationTarget.new(self.on_page_scroll),
+        )
+        self.page_animation.set_easing(Adw.Easing.EASE_OUT_CUBIC)
+        self.page_animation.connect("done", self.on_page_scroll_done)
+        self.page_animation.play()
+
+    def on_page_scroll(self, value):
+        self.canvas.scroll_by(value - self.page_progress)
+        self.page_progress = value
+
+    def on_page_scroll_done(self, animation):
+        if animation is self.page_animation:
+            self.page_animation = None
+
+    def cancel_page_scroll(self):
+        if self.page_animation is not None:
+            self.page_animation.pause()
+            self.page_animation = None
 
     def start_scrolling(self, direction):
+        self.cancel_page_scroll()
         self.scroll_direction = direction
         if not self.tick_id:
             self.last_frame_time = self.get_frame_clock().get_frame_time()
@@ -80,13 +125,24 @@ class WebtoonReader(ReaderBase):
         frame_time = frame_clock.get_frame_time()
         elapsed = (frame_time - self.last_frame_time) / GLib.USEC_PER_SEC
         self.last_frame_time = frame_time
+        elapsed = min(max(elapsed, 0.0), MAX_FRAME_DELTA)
 
-        if not self.scroll_direction or not self.get_mapped():
+        if not self.get_mapped():
             self.scroll_direction = 0
+            self.scroll_velocity = 0.0
             self.tick_id = 0
             return GLib.SOURCE_REMOVE
 
-        self.canvas.scroll_by(self.scroll_direction * SCROLL_SPEED * elapsed)
+        target = self.scroll_direction * SCROLL_SPEED
+        tau = SCROLL_ACCEL_TIME if self.scroll_direction else SCROLL_DECEL_TIME
+        self.scroll_velocity += (target - self.scroll_velocity) * (1 - math.exp(-elapsed / tau))
+
+        if not self.scroll_direction and abs(self.scroll_velocity) < SCROLL_STOP_SPEED:
+            self.scroll_velocity = 0.0
+            self.tick_id = 0
+            return GLib.SOURCE_REMOVE
+
+        self.canvas.scroll_by(self.scroll_velocity * elapsed)
         return GLib.SOURCE_CONTINUE
 
     def find_chapter(self, chapter_id):

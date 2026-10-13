@@ -150,8 +150,6 @@ class PagedReader(ReaderBase):
 
     @property
     def content(self):
-        """The widget directly inside the scrolled window's viewport, the one
-        that gets resized to zoom."""
         raise NotImplementedError
 
     @property
@@ -239,7 +237,6 @@ class PagedReader(ReaderBase):
         self.rescale(window.get_vadjustment(), y, ratio)
 
     def apply_zoom(self):
-        """Size the pages as a multiple of the viewport, so zoom 1 is a fit."""
         if self.zoom <= ZOOM_MIN:
             self.content.set_size_request(-1, -1)
             return
