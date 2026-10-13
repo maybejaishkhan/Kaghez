@@ -1,8 +1,8 @@
 import asyncio
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from ..manga import MangaCard  
-from ..containers import MangaGrid  
+from ..manga import MangaCard
+from ..containers import MangaGrid
 from .filter import SourceFilter
 
 from ...integrations import models
@@ -37,9 +37,6 @@ class SourcePage(Adw.NavigationPage):
         self.search_task = None
         self.latest_task = None
         self.filter_changes = []
-
-        self.search_entry.set_search_delay(400)
-        self.search_entry.connect("search-changed", self.search)
 
         self.filter_dialog = SourceFilter()
         self.filter_dialog.connect("applied", self.on_filters_applied)
@@ -78,7 +75,11 @@ class SourcePage(Adw.NavigationPage):
     def is_search_page(self, obj, page_name):
         return page_name == "search"
 
-    def search(self, *_):
+    @Gtk.Template.Callback()
+    def on_search_entry_activate(self, entry):
+        self.search()
+
+    def search(self):
         if self.search_task:
             self.search_task.cancel()
             self.search_task = None
