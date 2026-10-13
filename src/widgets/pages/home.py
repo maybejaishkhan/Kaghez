@@ -1,16 +1,17 @@
 import asyncio
 import random
-from gi.repository import Gtk, Adw, Gio, GObject
+from gi.repository import Adw, Gio, GObject, Gtk
 
 from ..manga import MangaOverview
 from ..containers import MangaRow
 
-from ...integrations import SourceMangaType
+from ...integrations.suwayomi import LOCAL_SOURCE_ID
 
 MAX_ROWS = 5
+ROW_SIZE = 8
 CANDIDATES = 15
 MAX_CONCURRENT = 3
-LOCAL_SOURCE_ID = "0"
+CAROUSEL_SIZE = 6
 
 
 @Gtk.Template(resource_path='/com/rini/kaghez/pages/home.ui')
@@ -26,89 +27,58 @@ class HomePage(Adw.NavigationPage):
     def __init__(self):
         super().__init__()
         self.suwayomi = Gio.Application.get_default().suwayomi
-        self.shown_rows = 0
-        self.carousel_children = []
 
-        self.library_handler = self.suwayomi.library.connect(
-            "items-changed", self.on_library_changed
-        )
-        self.connect("destroy", self.on_destroy)
+        library = self.suwayomi.library
+        handler = library.connect("items-changed", self.on_library_changed)
+        self.connect("destroy", lambda *_: library.disconnect(handler))
 
+        self.sync_carousel()
         asyncio.create_task(self.load())
 
-    def on_destroy(self, *_):
-        if self.library_handler is not None:
-            self.suwayomi.library.disconnect(self.library_handler)
-            self.library_handler = None
-
     async def load(self):
-        try:
-            await asyncio.gather(self.load_library(), self.load_sources())
-        finally:
-            if self.shown_rows == 0 and not self.carousel_children:
-                self.state = "greeter"
+        _, rows = await asyncio.gather(self.suwayomi.refreshLibrary(), self.load_sources())
+        if not rows and not self.suwayomi.library.get_n_items():
+            self.state = "greeter"
 
-    async def load_library(self):
-        await self.suwayomi.refreshLibrary()
+    def on_library_changed(self, *_):
         self.sync_carousel()
-
-    def on_library_changed(self, store, position, removed, added):
-        self.sync_carousel()
-        if self.carousel_children and self.state == "greeter":
+        if self.suwayomi.library.get_n_items():
             self.state = "home"
 
     def sync_carousel(self):
-        while self.carousel_children:
-            child = self.carousel_children.pop()
-            self.manga_carousel.remove(child)
-
-        for manga in list(self.suwayomi.library)[:6]:
-            child = MangaOverview(manga)
-            self.manga_carousel.append(child)
-            self.carousel_children.append(child)
-
+        while self.manga_carousel.get_n_pages():
+            self.manga_carousel.remove(self.manga_carousel.get_nth_page(0))
+        for manga in list(self.suwayomi.library)[:CAROUSEL_SIZE]:
+            self.manga_carousel.append(MangaOverview(manga))
         self.carousel_stack.set_visible_child_name(
-            "carousel" if self.carousel_children else "empty"
+            "carousel" if self.manga_carousel.get_n_pages() else "empty"
         )
 
     def pick_sources(self) -> list:
-        eligible = [s for s in self.suwayomi.sources if str(s.id) != LOCAL_SOURCE_ID]
         by_extension = {}
-        for source in eligible:
-            by_extension.setdefault(source.extension_pkg_name, []).append(source)
+        for source in self.suwayomi.sources:
+            if source.id != LOCAL_SOURCE_ID:
+                by_extension.setdefault(source.extension_pkg_name, []).append(source)
         picked = [random.choice(group) for group in by_extension.values()]
-
         random.shuffle(picked)
         return picked[:CANDIDATES]
 
-    async def load_sources(self):
+    async def load_sources(self) -> int:
         await self.suwayomi.refreshSources()
-        sources = self.pick_sources()
-
         semaphore = asyncio.Semaphore(MAX_CONCURRENT)
-        rows_added = 0
+        rows = 0
 
-        async def run(source):
-            nonlocal rows_added
-            if rows_added >= MAX_ROWS:
-                return
+        async def add_row(source):
+            nonlocal rows
             async with semaphore:
-                if rows_added >= MAX_ROWS:
+                if rows >= MAX_ROWS:
                     return
-                try:
-                    mangas = await self.suwayomi.getSourceManga(
-                        source.id, fetch_type=SourceMangaType.POPULAR
-                    )
-                except Exception as e:
-                    print(f"source {source.name!r} ({source.id}) failed: {e!r}")
-                    return
-                if not mangas or rows_added >= MAX_ROWS:
-                    return
-
+                mangas = await self.suwayomi.getSourceManga(source.id)
+            if mangas and rows < MAX_ROWS:
                 row = MangaRow(source.name)
-                row.set_items(mangas[:8])
+                row.set_items(mangas[:ROW_SIZE])
                 self.main_box.append(row)
-                rows_added += 1
-                self.shown_rows += 1
+                rows += 1
 
-        await asyncio.gather(*(run(s) for s in sources), return_exceptions=True)
+        await asyncio.gather(*map(add_row, self.pick_sources()), return_exceptions=True)
+        return rows

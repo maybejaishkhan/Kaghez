@@ -13,6 +13,7 @@ from gi.events import GLibEventLoopPolicy
 asyncio.set_event_loop_policy(GLibEventLoopPolicy())
 
 from gi.repository import Adw, Gio, GLib
+from gql.transport.exceptions import TransportError
 
 from .constants import NAME, set_version
 from .integrations import Suwayomi
@@ -25,7 +26,7 @@ JAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    'Suwayomi-Server.jar')
 
 LOCAL_URL = 'http://localhost:4567'
-READY_TIMEOUT = 60
+READY_TIMEOUT = 90
 POLL_INTERVAL = 0.5
 
 SERVER_CMD = [
@@ -58,6 +59,7 @@ class KaghezApplication(Adw.Application):
         self.settings = Gio.Settings(schema_id=APPLICATION_ID)
         self.suwayomi = Suwayomi()
         self.server: subprocess.Popen | None = None
+        self.server_log = None
 
         self.create_action('quit', lambda *_: self.quit(), ['<control>q'])
         self.create_action('preferences', self.on_preferences_action, ['<control>comma'])
@@ -86,20 +88,33 @@ class KaghezApplication(Adw.Application):
         Adw.Application.do_shutdown(self)
 
     def start_server(self) -> None:
+        
+        
+        log_dir = os.path.join(GLib.get_user_cache_dir(), 'kaghez')
+        os.makedirs(log_dir, exist_ok=True)
+        self.server_log = open(os.path.join(log_dir, 'server.log'), 'ab')
         self.server = subprocess.Popen(
-            SERVER_CMD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            SERVER_CMD, stdout=self.server_log, stderr=subprocess.STDOUT)
 
     def stop_server(self) -> None:
         if self.server:
             self.server.terminate()
             self.server.wait()
             self.server = None
+        if self.server_log:
+            self.server_log.close()
+            self.server_log = None
 
     async def launch_or_setup(self, mode: str, url: str) -> None:
         try:
             if not await self.launch(mode, url):
                 self.show_setup_window(
                     error="Couldn't reconnect. Check your setup and try again.")
+        except Exception as e:
+            
+            
+            self.stop_server()
+            self.show_setup_window(error=f"Failed to start: {e}")
         finally:
             self.release()
 
@@ -125,8 +140,12 @@ class KaghezApplication(Adw.Application):
         while loop.time() < deadline:
             if self.server and self.server.poll() is not None:
                 return False
-            if await self.suwayomi.getServerSettings():
-                return True
+            try:
+                if await self.suwayomi.getServerSettings():
+                    return True
+            except (TransportError, OSError, TimeoutError):
+                
+                pass
             await asyncio.sleep(POLL_INTERVAL)
         return False
 

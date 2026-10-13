@@ -7,7 +7,7 @@ from gi.repository import Adw, Gio, Graphene, GObject, Gsk, Gtk
 from .base import ZOOM_MAX
 
 DEFAULT_RATIO = 0.68
-ZOOM_MIN = 0.5  # unlike the paged readers, the strip may shrink below the viewport
+ZOOM_MIN = 0.5  
 PRELOAD = 0.5
 POOL_MAX = 6
 
@@ -64,15 +64,15 @@ class Canvas(Gtk.Widget, Gtk.Scrollable):
         self.store = None
 
         self.ratios = []
-        self.starts = []   # where each page starts along the scroll axis
-        self.sizes = []    # how long each page is along the scroll axis
-        self.extent = 0.0  # the whole strip along the scroll axis
-        self.cross = 0     # viewport size across the scroll axis, pages are fit to it
+        self.starts = []   
+        self.sizes = []    
+        self.extent = 0.0  
+        self.cross = 0     
 
         self.zoom = 1.0
 
-        self.realized = {}  # index -> panel
-        self.tasks = {}     # index -> image load
+        self.realized = {}  
+        self.tasks = {}     
         self.pool = []
         self.current_index = -1
         self.pending_index = None
@@ -163,7 +163,7 @@ class Canvas(Gtk.Widget, Gtk.Scrollable):
         self.scroll_by(direction * self.main_adjustment.get_page_increment())
 
     def on_orientation_changed(self, canvas, pspec):
-        if self.cross == 0:  # nothing is laid out yet
+        if self.cross == 0:  
             return
         self.pending_index = self.current_index
         self.cross = 0

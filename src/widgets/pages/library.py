@@ -1,10 +1,9 @@
 import asyncio
-from gi.repository import Gtk, Adw, Gio, GObject
+from gi.repository import Adw, Gio, GObject, Gtk
 
-from ..manga import MangaCard
-from ..containers import MangaGrid
+from ..manga import MangaCard  
+from ..containers import MangaGrid  
 
-from ...integrations import Suwayomi
 
 @Gtk.Template(resource_path='/com/rini/kaghez/pages/library.ui')
 class LibraryPage(Adw.NavigationPage):

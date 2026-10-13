@@ -1,22 +1,13 @@
 import asyncio
-from dataclasses import dataclass
-from gi.repository import Adw, Gio, GObject, Gtk, GLib
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from .extension_stores import ExtensionStoresDialog
 
-
-@dataclass(frozen=True)
-class ModeOption:
-    name: str
-    title: str
-    icon_name: str
-
-
-MODE_OPTIONS = [
-    ModeOption("webtoon", "Webtoon", "view-continuous-symbolic"),
-    ModeOption("single", "Single Page", "view-paged-symbolic"),
-    ModeOption("double", "Double Page", "view-dual-symbolic"),
-]
+MODES = (
+    ("webtoon", "Webtoon", "view-continuous-symbolic"),
+    ("single", "Single Page", "view-paged-symbolic"),
+    ("double", "Double Page", "view-dual-symbolic"),
+)
 
 
 @Gtk.Template(resource_path='/com/rini/kaghez/preferences/preferences.ui')
@@ -34,13 +25,10 @@ class KaghezPreferences(Adw.PreferencesDialog):
     def __init__(self):
         super().__init__()
         self.suwayomi = Gio.Application.get_default().suwayomi
-        self._location_dialog = None
 
         self.mode_stack = Adw.ViewStack()
-        for option in MODE_OPTIONS:
-            self.mode_stack.add_titled_with_icon(
-                Adw.Bin(), option.name, option.title, option.icon_name
-            )
+        for name, title, icon in MODES:
+            self.mode_stack.add_titled_with_icon(Adw.Bin(), name, title, icon)
         self.mode_stack.connect("notify::visible-child-name", self.on_reading_mode_changed)
 
         asyncio.create_task(self.load())
@@ -50,28 +38,23 @@ class KaghezPreferences(Adw.PreferencesDialog):
             self.suwayomi.getServerSettings(),
             self.suwayomi.getGlobalReaderSettings(),
         )
-        self.cbz_row.set_active(settings.get("downloadAsCbz", False))
-        downloads_path = settings.get("downloadsPath")
+        self.cbz_row.set_active(settings["downloadAsCbz"])
+        path = settings["downloadsPath"]
+        self.location_row.set_subtitle(
+            Gio.File.new_for_path(path).get_basename() if path
+            else "Choose where downloaded chapters are stored"
+        )
 
-        if downloads_path:
-            self.location_row.set_subtitle(
-                Gio.File.new_for_path(downloads_path).get_basename()
-            )
-        else:
-            self.location_row.set_subtitle(
-                "Choose where downloaded chapters are stored"
-            )
-
-        if reader.get("mode") is not None:
-            self.mode_stack.set_visible_child_name(reader["mode"])
-        self.orientation_row.set_selected(1 if reader.get("orientation") == "horizontal" else 0)
-        self.direction_row.set_selected(1 if reader.get("direction") == "rtl" else 0)
+        self.mode_stack.set_visible_child_name(reader.get("mode", "webtoon"))
+        self.orientation_row.set_selected(int(reader.get("orientation") == "horizontal"))
+        self.direction_row.set_selected(int(reader.get("direction") == "rtl"))
         self.loaded = True
         self.update_orientation_sensitivity()
 
     def update_orientation_sensitivity(self):
-        is_webtoon = self.mode_stack.get_visible_child_name() == "webtoon"
-        self.orientation_row.set_sensitive(self.loaded and is_webtoon)
+        self.orientation_row.set_sensitive(
+            self.loaded and self.mode_stack.get_visible_child_name() == "webtoon"
+        )
 
     def save_reading_mode(self):
         if self.loaded:
@@ -90,26 +73,24 @@ class KaghezPreferences(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def on_location_activated(self, row):
-        self._location_dialog = Gtk.FileDialog(title="Select Download Location")
-        self._location_dialog.select_folder(self.get_root(), None, self.on_location_selected)
+        Gtk.FileDialog(title="Select Download Location").select_folder(
+            self.get_root(), None, self.on_location_selected
+        )
 
     def on_location_selected(self, dialog, result):
         try:
             folder = dialog.select_folder_finish(result)
-        except GLib.Error:
+        except GLib.Error:  
             return
-        finally:
-            self._location_dialog = None
-        path = folder.get_path()
-        if path:
-            self.location_row.set_subtitle(folder.get_basename())
-            asyncio.create_task(self.suwayomi.setDownloadsPath(path))
+        self.location_row.set_subtitle(folder.get_basename())
+        asyncio.create_task(self.suwayomi.setDownloadsPath(folder.get_path()))
 
     @Gtk.Template.Callback()
     def on_direction_changed(self, row, pspec):
         if self.loaded:
-            direction = "rtl" if row.get_selected() == 1 else "ltr"
-            asyncio.create_task(self.suwayomi.setGlobalReadingDirection(direction))
+            asyncio.create_task(self.suwayomi.setGlobalReadingDirection(
+                "rtl" if row.get_selected() == 1 else "ltr"
+            ))
 
     @Gtk.Template.Callback()
     def on_cbz_toggled(self, row, pspec):
@@ -122,5 +103,4 @@ class KaghezPreferences(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def on_open_browser_activated(self, row):
-        launcher = Gtk.UriLauncher(uri=self.suwayomi.url)
-        launcher.launch(self.get_root(), None, None)
+        Gtk.UriLauncher(uri=self.suwayomi.url).launch(self.get_root(), None, None)

@@ -102,7 +102,7 @@ class KaghezWindow(Adw.ApplicationWindow):
     def on_swipe_scroll_end(self, controller):
         now = GLib.get_monotonic_time() / 1_000_000
         elapsed = max(now - self.swipe_start_time, 1e-3)
-        velocity = self.swipe_accum / elapsed  # px/s
+        velocity = self.swipe_accum / elapsed  
 
         far_enough = abs(self.swipe_accum) > SWIPE_COMMIT_DISTANCE
         fast_enough = abs(velocity) > SWIPE_COMMIT_VELOCITY

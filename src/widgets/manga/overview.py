@@ -65,8 +65,8 @@ def strip_labels(lines: list[str]) -> str:
 
 def extract_meat(description: str) -> str:
     paragraphs = split_paragraphs(description)
-    labeled = []      # paragraphs explicitly marked Synopsis/Summary/etc.
-    unlabeled = []    # plain prose paragraphs with no label
+    labeled = []
+    unlabeled = []
     fallback_chunks = []
 
     for para in paragraphs:

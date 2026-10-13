@@ -91,7 +91,7 @@ class SourceFilter(Adw.Dialog):
             return self.make_sort_row(item)
         if kind == "GroupFilter":
             return self.make_group_row(item)
-        return Gtk.Label()  # separators/headers are handled in rebuild, not here
+        return Gtk.Label()  
 
     def make_check_row(self, item):
         row = Adw.SwitchRow(title=item.node["name"], active=bool(item.node["default"]))

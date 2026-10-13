@@ -25,6 +25,7 @@ MODEL_CLASSES = {
     'Chapter': models.Chapter,
     'Extension': models.Extension,
     'Source': models.Source,
+    'Download': models.Download,
 }
 
 FETCH_CONNECTIONS = 8
@@ -42,8 +43,8 @@ READING_MODES = {
     3: ("webtoon", "horizontal"),
     4: ("webtoon", "vertical"),
 }
-
-GLOBAL_MODE_VALUES = {"single": 0, "double": 1}
+CHAPTER_VARS = {"is_read": "isRead", "is_bookmarked": "isBookmarked", "last_page_read": "lastPageRead"}
+FILTER_DEFAULTS = ("checkBoxDefault", "selectDefault", "triStateDefault", "textDefault", "sortDefault")
 
 
 class SourceMangaType(enum.StrEnum):
@@ -53,9 +54,7 @@ class SourceMangaType(enum.StrEnum):
 
 
 def readingModeValue(mode: str, orientation: str) -> int:
-    if mode in GLOBAL_MODE_VALUES:
-        return GLOBAL_MODE_VALUES[mode]
-    return 3 if orientation == "horizontal" else 4
+    return {"single": 0, "double": 1}.get(mode, 3 if orientation == "horizontal" else 4)
 
 
 def makeClient(url: str) -> Client:
@@ -99,134 +98,103 @@ class Suwayomi(GObject.Object):
             eviction_policy="least-recently-used",
         )
 
-        self.download_queue = Gio.ListStore.new(item_type=models.Download)
-        self.library = Gio.ListStore.new(item_type=models.Manga)
-        self.sources = Gio.ListStore.new(item_type=models.Source)
-        self.extensions = Gio.ListStore.new(item_type=models.Extension)
+        self.download_queue = Gio.ListStore(item_type=models.Download)
+        self.library = Gio.ListStore(item_type=models.Manga)
+        self.sources = Gio.ListStore(item_type=models.Source)
+        self.extensions = Gio.ListStore(item_type=models.Extension)
 
         self.all_sources = []
         self.languages = ["en", "all"]
 
+    def swapClient(self, url: str) -> Client | None:
+        """Install a fresh client; returns the old one if it needs closing."""
+        old, connected = self.client, self.session is not None
+        self.session, self.url, self.client = None, url, makeClient(url)
+        return old if connected else None
+
     def reconnect(self, url: str):
-        """Switch to a new URL; the old client is closed in the background."""
-        old_client, had_session = self.client, self.session is not None
-        self.session = None
-        self.url = url
-        self.client = makeClient(url)
-        if had_session:
-            task = asyncio.get_running_loop().create_task(old_client.close_async())
+        if old := self.swapClient(url):
+            task = asyncio.create_task(old.close_async())
             self.closing.add(task)
             task.add_done_callback(self.closing.discard)
 
     async def disconnect(self):
-        """Close the current connection and prepare a fresh client for later use."""
-        old_client, had_session = self.client, self.session is not None
-        self.session = None
-        self.client = makeClient(self.url)
-        if had_session:
-            await old_client.close_async()
+        if old := self.swapClient(self.url):
+            await old.close_async()
 
     async def close(self):
-        try:
-            if self.session is not None:
-                client, self.session = self.client, None
-                await client.close_async()
-            if self.closing:
-                await asyncio.gather(*list(self.closing), return_exceptions=True)
-        finally:
-            await self.http.aclose()
-            self.cache.close()
+        if self.session is not None:
+            await self.client.close_async()
+        await asyncio.gather(*self.closing)
+        await self.http.aclose()
+        self.cache.close()
 
     async def getSession(self):
-        if self.session is None:
-            async with self.connect_lock:
-                if self.session is None:
-                    self.session = await self.client.connect_async()
+        async with self.connect_lock:
+            if self.session is None:
+                self.session = await self.client.connect_async()
         return self.session
 
-    async def query(self, gql_query, variable_values=None, raise_errors=False, retries=1) -> dict:
-        for attempt in range(retries + 1):
-            try:
-                session = await self.getSession()
-                return await session.execute(gql_query, variable_values=variable_values) or {}
-            except Exception as exc:
-                if isinstance(exc, TimeoutError) and attempt < retries:
-                    continue
-                if raise_errors:
-                    raise
-                return {}
+    async def query(self, gql_query, variable_values=None) -> dict:
+        session = await self.getSession()
+        return await session.execute(gql_query, variable_values=variable_values)
 
     async def shared(self, key, factory):
         if key not in self.pending:
             task = asyncio.create_task(factory())
-            task.add_done_callback(lambda done: self.pending.pop(key, None))
+            task.add_done_callback(lambda _: self.pending.pop(key, None))
             self.pending[key] = task
         return await asyncio.shield(self.pending[key])
 
-    async def loadBytes(self, url: str) -> bytes | None:
-        cached = await asyncio.to_thread(self.cache.get, url)
-        if cached is not None:
-            return cached
+    @staticmethod
+    def replace(store: Gio.ListStore, items: list):
+        if list(store) != items:
+            store.splice(0, store.get_n_items(), items)
 
-        try:
-            response = await self.http.get(url)
-            response.raise_for_status()
-        except httpx.HTTPError:
-            return None
+    async def loadBytes(self, url: str) -> bytes:
+        if (data := await asyncio.to_thread(self.cache.get, url)) is None:
+            data = (await self.http.get(url)).content
+            await asyncio.to_thread(self.cache.set, url, data)
+        return data
 
-        await asyncio.to_thread(self.cache.set, url, response.content)
-        return response.content
-
-    async def getPaintable(self, url: str) -> Gdk.Paintable | None:
+    async def getPaintable(self, url: str) -> Gdk.Paintable:
         raw_bytes = await self.shared(('bytes', url), lambda: self.loadBytes(url))
-        if not raw_bytes:
-            return None
-        try:
-            async with self.decode_slots:
-                return await asyncio.to_thread(self.makeTexture, raw_bytes)
-        except GLib.Error:
-            await asyncio.to_thread(self.cache.delete, url)
-            return None
+        async with self.decode_slots:
+            return await asyncio.to_thread(self.makeTexture, raw_bytes)
+
+    async def loadIcon(self, item):
+        if item.icon_url:
+            item.paintable = await self.getPaintable(item.icon_url)
 
     def makeTexture(self, raw_bytes: bytes) -> Gdk.Texture:
         gbytes = GLib.Bytes.new(raw_bytes)
         try:
             return Gdk.Texture.new_from_bytes(gbytes)
         except GLib.Error:
-            loader = Gly.Loader.new_for_bytes(gbytes)
-            frame = loader.load().next_frame()
+            frame = Gly.Loader.new_for_bytes(gbytes).load().next_frame()
             return GlyGtk4.frame_get_texture(frame)
 
     def getModel(self, model_id: int | str, item_type: str) -> GObject.Object | None:
         return self.loaded_models.get((item_type, model_id))
 
-    def makeModel(self, item: dict, item_type: str) -> GObject.Object | None:
+    def modelFor(self, item_type: str, item_id: int | str) -> GObject.Object:
+        key = (item_type, item_id)
+        if key not in self.loaded_models:
+            self.loaded_models[key] = MODEL_CLASSES[item_type]()
+        return self.loaded_models[key]
+
+    def makeModel(self, item: dict | None, item_type: str) -> GObject.Object | None:
         if item is None:
             return None
-        item_id = item.get('pkgName') if item_type == 'Extension' else item.get('id')
-        if item_id is None:
-            return None
-
-        key = (item_type, item_id)
-        model = self.loaded_models.get(key)
-        if model is None:
-            model = MODEL_CLASSES[item_type]()
-            self.loaded_models[key] = model
-
-        fill = {
-            'Manga': self.fillManga,
-            'Chapter': self.fillChapter,
-            'Extension': self.fillExtension,
-            'Source': self.fillSource,
-        }[item_type]
-        fill(model, item)
+        model = self.modelFor(item_type, item['pkgName'] if item_type == 'Extension' else item['id'])
+        getattr(self, f"fill{item_type}")(model, item)
         return model
 
     def makeModels(self, nodes: list, item_type: str) -> list:
-        return [model for model in (self.makeModel(node, item_type) for node in nodes) if model is not None]
+        return [self.makeModel(node, item_type) for node in nodes]
 
     def makeChapterStore(self, chapter_models: list) -> Gio.ListStore:
-        store = Gio.ListStore.new(item_type=models.Chapter)
+        store = Gio.ListStore(item_type=models.Chapter)
         store.splice(0, 0, chapter_models)
         return store
 
@@ -250,32 +218,26 @@ class Suwayomi(GObject.Object):
             real_url=item.get('realUrl'),
             thumbnail_url=self.absoluteUrl(item.get('thumbnailUrl')),
         )
-
-        chapters = item.get('chapters')
-        if chapters is not None:
+        if chapters := item.get('chapters'):
             if 'totalCount' in chapters:
-                model.set_property('total_chapters', chapters['totalCount'])
-            nodes = chapters.get('nodes')
-            if nodes is not None:
-                model.set_property('chapters', self.makeChapterStore(self.makeModels(nodes, 'Chapter')))
-        if model.chapters is None:
-            model.set_property('chapters', self.makeChapterStore([]))
+                model.total_chapters = chapters['totalCount']
+            if 'nodes' in chapters:
+                self.replace(model.chapters, self.makeModels(chapters['nodes'], 'Chapter'))
 
     def fillChapter(self, model, item: dict):
-        values = {name: item[key] for key, name in CHAPTER_FIELDS.items() if key in item}
-        model.update_data(id=item.get('id'), **values)
+        model.update_data(id=item['id'], **{name: item[key] for key, name in CHAPTER_FIELDS.items() if key in item})
 
     def fillExtension(self, model, item: dict):
         values = {name: item[key] for key, name in EXTENSION_FIELDS.items() if key in item}
         if 'iconUrl' in item:
-            values['icon_url'] = self.absoluteUrl(item.get('iconUrl'))
-        model.update_data(pkg_name=item.get('pkgName'), **values)
+            values['icon_url'] = self.absoluteUrl(item['iconUrl'])
+        model.update_data(pkg_name=item['pkgName'], **values)
 
     def fillSource(self, model, item: dict):
         extension = item.get('extension') or {}
         model.update_data(
-            id=item.get('id'),
-            name=item.get('name'),
+            id=item['id'],
+            name=item['name'],
             lang=item.get('lang', ''),
             icon_url=self.absoluteUrl(item.get('iconUrl')),
             is_configurable=item.get('isConfigurable', False),
@@ -284,53 +246,37 @@ class Suwayomi(GObject.Object):
             extension_name=extension.get('name', ''),
         )
 
-    async def getManga(self, manga_id: int) -> models.Manga | None:
+    async def getManga(self, manga_id: int) -> models.Manga:
         model = self.getModel(manga_id, 'Manga')
         if model and model.initialized:
             return model
         return await self.shared(('manga', manga_id), lambda: self.fetchManga(manga_id))
 
-    async def fetchManga(self, manga_id: int) -> models.Manga | None:
+    async def fetchManga(self, manga_id: int) -> models.Manga:
         result = await self.query(
             FETCH_MANGA,
-            variable_values={"id": manga_id, "fetchManga": True, "fetchChapters": True},
+            {"id": manga_id, "fetchManga": True, "fetchChapters": True},
         )
-        data = result.get('fetchMangaAndChapters', {})
-        node = data.get('manga')
-        if node is None:
-            return self.getModel(manga_id, 'Manga')
-        chapters_list = data.get('chapters', [])
-        node = {**node, 'chapters': {'nodes': chapters_list, 'totalCount': len(chapters_list)}}
+        data = result['fetchMangaAndChapters']
+        chapters = data['chapters']
+        node = {**data['manga'], 'chapters': {'nodes': chapters, 'totalCount': len(chapters)}}
         return self.makeModel(node, 'Manga')
 
-    async def getChapters(
-        self,
-        manga_id: int,
-        first: int | None = None,
-        after: str | None = None,
-    ) -> list:
-        variables = {"mangaId": manga_id, "first": first, "after": after}
-        result = await self.query(GET_CHAPTERS_MANGA, variable_values=variables)
-        connection = result.get('chapters', {})
-        chapter_models = self.makeModels(connection.get('nodes', []), 'Chapter')
-
-        model = self.getModel(manga_id, 'Manga')
-        if model is not None:
-            model.set_property('chapters', self.makeChapterStore(chapter_models))
-            model.set_property('total_chapters', connection.get('totalCount', len(chapter_models)))
-
+    async def getChapters(self, manga_id: int, first: int | None = None, after: str | None = None) -> list:
+        result = await self.query(GET_CHAPTERS_MANGA, {"mangaId": manga_id, "first": first, "after": after})
+        connection = result['chapters']
+        chapter_models = self.makeModels(connection['nodes'], 'Chapter')
+        if model := self.getModel(manga_id, 'Manga'):
+            self.replace(model.chapters, chapter_models)
+            model.total_chapters = connection['totalCount']
         return chapter_models
 
     async def refreshLibrary(self):
-        await self.shared(('library',), self.loadLibrary)
+        await self.shared('library', self.loadLibrary)
 
     async def loadLibrary(self):
         result = await self.query(GET_LIBRARY)
-        if 'mangas' not in result:
-            return
-        manga_models = self.makeModels(result['mangas'].get('nodes') or [], 'Manga')
-        if list(self.library) != manga_models:
-            self.library.splice(0, self.library.get_n_items(), manga_models)
+        self.replace(self.library, self.makeModels(result['mangas']['nodes'], 'Manga'))
 
     def syncLibraryMembership(self, model: models.Manga, in_library: bool):
         found, position = self.library.find(model)
@@ -340,44 +286,30 @@ class Suwayomi(GObject.Object):
             self.library.remove(position)
 
     async def refreshExtensions(self):
-        await self.shared(('extensions',), self.loadExtensions)
+        await self.shared('extensions', self.loadExtensions)
 
     async def loadExtensions(self):
-        result = await self.query(FETCH_EXTENSIONS, retries=2)
-        data = result.get('fetchExtensions')
-        if data is None:
-            return
-        extension_models = self.makeModels(data.get('extensions') or [], 'Extension')
-        if list(self.extensions) != extension_models:
-            self.extensions.splice(0, self.extensions.get_n_items(), extension_models)
+        result = await self.query(FETCH_EXTENSIONS)
+        self.replace(self.extensions, self.makeModels(result['fetchExtensions']['extensions'], 'Extension'))
 
     async def refreshSources(self):
-        await self.shared(('sources',), self.loadSources)
+        await self.shared('sources', self.loadSources)
 
     async def loadSources(self):
-        async with asyncio.TaskGroup() as group:
-            sources_task = group.create_task(self.query(GET_SOURCES))
-            group.create_task(self.getBrowseLanguages())
-        result = sources_task.result()
-        if 'sources' not in result:
-            return
-        self.all_sources = self.makeModels(result['sources'].get('nodes') or [], 'Source')
+        result, _ = await asyncio.gather(self.query(GET_SOURCES), self.getBrowseLanguages())
+        self.all_sources = self.makeModels(result['sources']['nodes'], 'Source')
         self.applyLanguages()
 
     def applyLanguages(self):
-        enabled = [
+        self.replace(self.sources, [
             source for source in self.all_sources
             if source.lang in self.languages or source.id == LOCAL_SOURCE_ID
-        ]
-        if list(self.sources) != enabled:
-            self.sources.splice(0, self.sources.get_n_items(), enabled)
+        ])
 
-    async def getBrowseLanguages(self) -> list:
-        values = await self.getGlobalMetaValues()
-        languages = self.readMeta(values, self.LANGUAGES_KEY)
-        if isinstance(languages, list):
+    async def getBrowseLanguages(self):
+        languages = self.readMeta(await self.getGlobalMetaValues(), self.LANGUAGES_KEY)
+        if languages is not None:
             self.languages = languages
-        return self.languages
 
     async def setBrowseLanguages(self, languages: list):
         self.languages = languages
@@ -387,53 +319,39 @@ class Suwayomi(GObject.Object):
     async def getSourceManga(
         self,
         source_id: str,
-        fetch_type: str = SourceMangaType.POPULAR,
+        fetch_type: SourceMangaType = SourceMangaType.POPULAR,
         page: int = 1,
         query: str | None = None,
         filters: list | None = None,
     ) -> list:
-        variables = {
+        result = await self.query(GET_SOURCE_MANGA, {
             "source": source_id,
-            "type": str(fetch_type),
+            "type": fetch_type,
             "page": page,
             "query": query,
             "filters": filters or None,
-        }
-        result = await self.query(GET_SOURCE_MANGA, variable_values=variables, raise_errors=True)
-        nodes = result.get('fetchSourceManga', {}).get('mangas', [])
-        return self.makeModels(nodes, 'Manga')
+        })
+        return self.makeModels(result['fetchSourceManga']['mangas'], 'Manga')
 
     def makeFilter(self, node: dict) -> dict:
-        default = None
-        for key in ("checkBoxDefault", "selectDefault", "triStateDefault", "textDefault", "sortDefault"):
-            if key in node:
-                default = node[key]
-                break
         return {
             "type": node.get("type"),
             "name": node.get("name") or "",
-            "default": default,
+            "default": next((node[key] for key in FILTER_DEFAULTS if key in node), None),
             "values": node.get("values") or [],
             "filters": [self.makeFilter(child) for child in node.get("filters") or []],
         }
 
     async def getSourceFilters(self, source_id: str) -> list:
-        result = await self.query(GET_SOURCE_FILTERS, variable_values={"id": source_id})
-        nodes = (result.get('source') or {}).get('filters') or []
-        return [self.makeFilter(node) for node in nodes]
+        result = await self.query(GET_SOURCE_FILTERS, {"id": source_id})
+        return [self.makeFilter(node) for node in result['source']['filters']]
 
     async def changeExtension(self, pkg_name: str, **patch):
         model = self.getModel(pkg_name, 'Extension')
-        if model:
-            model.is_busy = True
-        try:
-            result = await self.query(UPDATE_EXTENSION, variable_values={"pkgName": pkg_name, **patch})
-            node = result.get('updateExtension', {}).get('extension')
-            if node:
-                self.makeModel(node, 'Extension')
-        finally:
-            if model:
-                model.is_busy = False
+        model.is_busy = True
+        result = await self.query(UPDATE_EXTENSION, {"pkgName": pkg_name, **patch})
+        self.makeModel(result['updateExtension']['extension'], 'Extension')
+        model.is_busy = False
 
     async def installExtension(self, pkg_name: str):
         await self.changeExtension(pkg_name, install=True)
@@ -445,110 +363,44 @@ class Suwayomi(GObject.Object):
         await self.changeExtension(pkg_name, uninstall=True)
 
     def makePageModel(self, chapter_id: int, index: int, url: str) -> models.Page:
-        return models.Page(
-            index=index,
-            chapter_id=chapter_id,
-            url=urljoin(self.url, url),
-        )
+        return models.Page(index=index, chapter_id=chapter_id, url=self.absoluteUrl(url))
 
     async def getChapterPages(self, chapter_id: int) -> list:
-        result = await self.query(FETCH_CHAPTER_PAGES, variable_values={"chapterId": chapter_id})
-        data = result.get('fetchChapterPages', {})
-        urls = data.get('pages', [])
-        page_models = [self.makePageModel(chapter_id, index, url) for index, url in enumerate(urls)]
+        result = await self.query(FETCH_CHAPTER_PAGES, {"chapterId": chapter_id})
+        data = result['fetchChapterPages']
+        chapter, manga = data['chapter'], data['chapter']['manga']
+        self.getModel(chapter_id, 'Chapter').update_data(
+            page_count=chapter['pageCount'],
+            is_downloaded=chapter['isDownloaded'],
+        )
+        self.getModel(manga['id'], 'Manga').download_count = manga['downloadCount']
+        return [self.makePageModel(chapter_id, index, url) for index, url in enumerate(data['pages'])]
 
-        chapter_node = data.get('chapter')
-        if chapter_node:
-            chapter_model = self.getModel(chapter_id, 'Chapter')
-            if chapter_model:
-                chapter_model.update_data(
-                    page_count=chapter_node.get('pageCount', len(urls)),
-                    is_downloaded=chapter_node.get('isDownloaded', False),
-                )
-            manga_node = chapter_node.get('manga')
-            if manga_node:
-                manga_model = self.getModel(manga_node.get('id'), 'Manga')
-                if manga_model:
-                    manga_model.set_property('download_count', manga_node.get('downloadCount', 0))
+    async def updateChapter(self, chapter_id: int, **changes):
+        """changes: any of is_read, is_bookmarked, last_page_read."""
+        self.getModel(chapter_id, 'Chapter').update_data(**changes)
 
-        return page_models
-
-    async def updateChapter(
-        self,
-        chapter_id: int,
-        is_read: bool | None = None,
-        is_bookmarked: bool | None = None,
-        last_page_read: int | None = None,
-    ):
-        changes = {
-            "is_read": is_read,
-            "is_bookmarked": is_bookmarked,
-            "last_page_read": last_page_read,
-        }
-        changes = {name: value for name, value in changes.items() if value is not None}
-
-        variables = {"id": chapter_id}
-        if is_read is not None:
-            variables["isRead"] = is_read
-        if is_bookmarked is not None:
-            variables["isBookmarked"] = is_bookmarked
-        if last_page_read is not None:
-            variables["lastPageRead"] = last_page_read
-
-        model = self.getModel(chapter_id, 'Chapter')
-        if model:
-            model.update_data(**changes)
-
-        result = await self.query(UPDATE_CHAPTER, variable_values=variables)
-        node = result.get('updateChapter', {}).get('chapter')
-        if node is None:
-            return
-        manga_node = node.pop('manga', None)
+        variables = {"id": chapter_id, **{CHAPTER_VARS[name]: value for name, value in changes.items()}}
+        node = (await self.query(UPDATE_CHAPTER, variables))['updateChapter']['chapter']
         self.makeModel(node, 'Chapter')
-        if manga_node:
-            manga_model = self.getModel(manga_node.get('id'), 'Manga')
-            if manga_model:
-                manga_model.set_property('unread_count', manga_node.get('unreadCount', manga_model.unread_count))
+        self.getModel(node['manga']['id'], 'Manga').unread_count = node['manga']['unreadCount']
 
     async def deleteDownloadedChapter(self, chapter_id: int):
-        model = self.getModel(chapter_id, 'Chapter')
-        if model:
-            model.update_data(is_downloaded=False)
+        self.getModel(chapter_id, 'Chapter').is_downloaded = False
 
-        result = await self.query(DELETE_DOWNLOADED_CHAPTER, variable_values={"id": chapter_id})
-        chapters = result.get('deleteDownloadedChapter', {}).get('chapters') or []
-        if isinstance(chapters, dict):
-            chapters = [chapters]
-
-        for node in chapters:
-            manga_node = node.pop('manga', None)
-            chapter_model = self.getModel(node.get('id'), 'Chapter')
-            if chapter_model:
-                chapter_model.set_property('is_downloaded', node.get('isDownloaded', False))
-            if manga_node:
-                manga_model = self.getModel(manga_node.get('id'), 'Manga')
-                if manga_model:
-                    manga_model.set_property('download_count', manga_node.get('downloadCount', 0))
+        result = await self.query(DELETE_DOWNLOADED_CHAPTER, {"id": chapter_id})
+        node = result['deleteDownloadedChapter']['chapters']
+        self.makeModel(node, 'Chapter')
+        self.getModel(node['manga']['id'], 'Manga').download_count = node['manga']['downloadCount']
 
     async def setMangaLibrary(self, manga_id: int, in_library: bool):
         model = self.getModel(manga_id, 'Manga')
-        if model:
-            model.update_data(in_library=in_library)
-            self.syncLibraryMembership(model, in_library)
+        model.in_library = in_library
+        self.syncLibraryMembership(model, in_library)
 
-        result = await self.query(
-            SET_MANGA_LIBRARY,
-            variable_values={"id": manga_id, "inLibrary": in_library},
-        )
-        node = result.get('updateManga', {}).get('manga')
-        if node is None or model is None:
-            return
-        model.update_data(
-            in_library=node.get('inLibrary', in_library),
-            in_library_at=node.get('inLibraryAt', ''),
-            unread_count=node.get('unreadCount', model.unread_count),
-        )
-        self.syncLibraryMembership(model, model.in_library)
+        result = await self.query(SET_MANGA_LIBRARY, {"id": manga_id, "inLibrary": in_library})
+        node = result['updateManga']['manga']
+        model.update_data(in_library_at=node['inLibraryAt'], unread_count=node['unreadCount'])
 
     async def addToLibrary(self, manga_id: int):
         await self.setMangaLibrary(manga_id, True)
@@ -556,44 +408,27 @@ class Suwayomi(GObject.Object):
     async def removeFromLibrary(self, manga_id: int):
         await self.setMangaLibrary(manga_id, False)
 
-    def makeDownloadModel(self, item: dict) -> models.Download | None:
-        chapter = item.get('chapter') or {}
-        manga = item.get('manga') or {}
-        chapter_id = chapter.get('id')
-        if chapter_id is None:
-            return None
-        key = ('Download', chapter_id)
-        model = self.loaded_models.get(key)
-        if model is None:
-            model = models.Download()
-            self.loaded_models[key] = model
+    def makeDownloadModel(self, item: dict) -> models.Download:
+        chapter, manga = item['chapter'], item['manga']
+        model = self.modelFor('Download', chapter['id'])
         model.update_data(
-            chapter_id=chapter_id,
-            chapter_name=chapter.get('name') or "",
-            manga_id=manga.get('id') or 0,
-            manga_title=manga.get('title') or "",
-            progress=item.get('progress') or 0.0,
-            state=item.get('state') or "",
-            tries=item.get('tries') or 0,
+            chapter_id=chapter['id'],
+            chapter_name=chapter['name'],
+            manga_id=manga['id'],
+            manga_title=manga['title'],
+            progress=item['progress'],
+            state=item['state'],
+            tries=item['tries'],
         )
         return model
 
     async def getDownloadStatus(self):
-        result = await self.query(GET_DOWNLOAD_STATUS)
-        status = result.get('downloadStatus')
-        if not status:
-            return
-        self.downloader_state = status.get('state') or self.downloader_state
-
-        new_models = [m for m in map(self.makeDownloadModel, status.get('queue') or []) if m is not None]
-
-        current_ids = [m.chapter_id for m in self.download_queue]
-        new_ids = [m.chapter_id for m in new_models]
-        if current_ids != new_ids:
-            self.download_queue.splice(0, len(current_ids), new_models)
+        status = (await self.query(GET_DOWNLOAD_STATUS))['downloadStatus']
+        self.downloader_state = status['state']
+        self.replace(self.download_queue, [self.makeDownloadModel(item) for item in status['queue']])
 
     async def downloadCommand(self, gql_query, variables=None):
-        await self.query(gql_query, variable_values=variables)
+        await self.query(gql_query, variables)
         await self.getDownloadStatus()
 
     async def enqueueChapterDownload(self, chapter_id: int):
@@ -615,8 +450,8 @@ class Suwayomi(GObject.Object):
         await self.downloadCommand(STOP_DOWNLOADER)
 
     @staticmethod
-    def metaValues(nodes: list | None) -> dict:
-        return {meta['key']: meta['value'] for meta in nodes or []}
+    def metaValues(nodes: list) -> dict:
+        return {meta['key']: meta['value'] for meta in nodes}
 
     def readMeta(self, values: dict, key: str):
         value = values.get(key)
@@ -624,37 +459,30 @@ class Suwayomi(GObject.Object):
 
     def parseReaderSettings(self, values: dict) -> dict:
         settings = {}
-        mode = self.readMeta(values, self.MODE_KEY)
-        if mode in READING_MODES:
+        if (mode := self.readMeta(values, self.MODE_KEY)) is not None:
             settings["mode"], settings["orientation"] = READING_MODES[mode]
-        direction = self.readMeta(values, self.DIRECTION_KEY)
-        if direction in (0, 1):
+        if (direction := self.readMeta(values, self.DIRECTION_KEY)) is not None:
             settings["direction"] = "rtl" if direction == 1 else "ltr"
         return settings
 
     async def getGlobalMetaValues(self) -> dict:
         result = await self.query(GET_GLOBAL_READER_META)
-        return self.metaValues((result.get('metas') or {}).get('nodes'))
+        return self.metaValues(result['metas']['nodes'])
 
     async def getReaderSettings(self, manga_id: int) -> dict:
-        result = await self.query(GET_READER_META, variable_values={"id": manga_id})
-        values = self.metaValues((result.get('metas') or {}).get('nodes'))
-        values.update(self.metaValues((result.get('manga') or {}).get('meta')))
+        result = await self.query(GET_READER_META, {"id": manga_id})
+        values = self.metaValues(result['metas']['nodes'])
+        values.update(self.metaValues(result['manga']['meta']))
         return self.parseReaderSettings(values)
 
     async def setReaderSettings(self, manga_id: int, settings: dict):
-        mode = readingModeValue(settings["mode"], settings["orientation"])
-        direction = 1 if settings["direction"] == "rtl" else 0
-        async with asyncio.TaskGroup() as group:
-            group.create_task(self.setMeta(manga_id, self.MODE_KEY, mode))
-            group.create_task(self.setMeta(manga_id, self.DIRECTION_KEY, direction))
+        await asyncio.gather(
+            self.setMeta(manga_id, self.MODE_KEY, readingModeValue(settings["mode"], settings["orientation"])),
+            self.setMeta(manga_id, self.DIRECTION_KEY, 1 if settings["direction"] == "rtl" else 0),
+        )
 
     async def setMeta(self, manga_id: int, key: str, value):
-        await self.query(SET_MANGA_META, variable_values={
-            "mangaId": manga_id,
-            "key": key,
-            "value": json.dumps(value),
-        })
+        await self.query(SET_MANGA_META, {"mangaId": manga_id, "key": key, "value": json.dumps(value)})
 
     async def getGlobalReaderSettings(self) -> dict:
         return self.parseReaderSettings(await self.getGlobalMetaValues())
@@ -666,17 +494,13 @@ class Suwayomi(GObject.Object):
         await self.setGlobalMeta(self.DIRECTION_KEY, 1 if direction == "rtl" else 0)
 
     async def setGlobalMeta(self, key: str, value):
-        await self.query(SET_GLOBAL_META, variable_values={
-            "key": key,
-            "value": json.dumps(value),
-        })
+        await self.query(SET_GLOBAL_META, {"key": key, "value": json.dumps(value)})
 
     async def getServerSettings(self) -> dict:
-        result = await self.query(GET_SERVER_SETTINGS)
-        return result.get('settings') or {}
+        return (await self.query(GET_SERVER_SETTINGS))['settings']
 
     async def setServerSettings(self, **settings):
-        await self.query(SET_SERVER_SETTINGS, variable_values={"settings": settings})
+        await self.query(SET_SERVER_SETTINGS, {"settings": settings})
 
     async def setDownloadAsCbz(self, value: bool):
         await self.setServerSettings(downloadAsCbz=value)
@@ -685,8 +509,7 @@ class Suwayomi(GObject.Object):
         await self.setServerSettings(downloadsPath=path)
 
     async def getExtensionStores(self) -> list:
-        settings = await self.getServerSettings()
-        return settings.get('extensionRepos') or []
+        return (await self.getServerSettings())['extensionRepos']
 
     async def setExtensionStores(self, urls: list):
         await self.setServerSettings(extensionRepos=urls)
@@ -700,3 +523,4 @@ class Suwayomi(GObject.Object):
             return Locale.parse(lang, sep="-").get_display_name("en")
         except Exception:
             return lang.upper()
+

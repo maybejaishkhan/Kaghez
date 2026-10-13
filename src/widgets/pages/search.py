@@ -1,5 +1,5 @@
 import asyncio
-from gi.repository import Gtk, Adw, Gio, GObject
+from gi.repository import Adw, Gio, GObject, Gtk
 
 from ..containers import MangaRow
 from ...integrations.suwayomi import SourceMangaType
@@ -20,71 +20,49 @@ class SearchPage(Adw.NavigationPage):
         self.suwayomi = Gio.Application.get_default().suwayomi
         self.search_task = None
 
-    def clear_results(self):
-        for child in list(self.main_box):
-            self.main_box.remove(child)
-
     def reset_progress(self):
-        self.completed_sources = 0
-        self.total_sources = 0
+        self.completed_sources = self.total_sources = 0
 
     @Gtk.Template.Callback()
     def get_progress(self, obj, completed, total):
-        return completed / total if total > 0 else 0.0
+        return completed / total if total else 0.0
 
     async def search_source(self, source, row, query):
-        try:
-            mangas = await self.suwayomi.getSourceManga(
-                source.id, fetch_type=SourceMangaType.SEARCH, page=1, query=query
-            )
-        except Exception as e:
-            print(f"[search] source {source.name!r} ({source.id}) failed: {e!r}")
-            self.main_box.remove(row)
-            return
-        finally:
-            self.completed_sources += 1
-
-        if mangas:
-            row.set_items(mangas)
-            row.set_visible(True)
-        else:
-            self.main_box.remove(row)
+        mangas = await self.suwayomi.getSourceManga(
+            source.id, fetch_type=SourceMangaType.SEARCH, query=query
+        )
+        self.completed_sources += 1
+        row.set_items(mangas)
+        row.set_visible(bool(mangas))
 
     async def search(self, query):
-        self.reset_progress()
         self.state = "result"
-
         await self.suwayomi.refreshSources()
         sources = list(self.suwayomi.sources)
-        if len(sources) == 0:
-            self.state = "empty"
-            return
-
         self.total_sources = len(sources)
 
-        tasks = []
-        for source in sources:
-            row = MangaRow(source.name)
+        rows = [MangaRow(source.name) for source in sources]
+        for row in rows:
             row.set_visible(False)
             self.main_box.append(row)
-            tasks.append(self.search_source(source, row, query))
 
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(
+            *(self.search_source(s, r, query) for s, r in zip(sources, rows)),
+            return_exceptions=True,
+        )
         self.reset_progress()
-        if len(list(self.main_box)) == 0:
+        if not any(row.get_visible() for row in rows):
             self.state = "empty"
 
     @Gtk.Template.Callback()
     def on_search_entry_activate(self, entry):
-        text = entry.get_text()
-        if self.search_task is not None:
+        if self.search_task:
             self.search_task.cancel()
-            self.search_task = None
-
-        self.clear_results()
+        for child in list(self.main_box):
+            self.main_box.remove(child)
         self.reset_progress()
 
-        if text:
+        if text := entry.get_text():
             self.search_task = asyncio.create_task(self.search(text))
         else:
             self.state = "greeter"

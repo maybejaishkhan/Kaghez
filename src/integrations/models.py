@@ -1,15 +1,14 @@
-from gi.repository import GObject, Gio, Gdk
+from gi.repository import Gdk, Gio, GObject
+
 
 class BasicModel(GObject.Object):
     __gtype_name__ = 'KaghezBasicModel'
-    def __init__(self, **kwargs):
-        super().__init__()
-        self.update_data(**kwargs)
 
     def update_data(self, **kwargs):
         for name, value in kwargs.items():
-            if self.get_property(name) != value:
-                self.set_property(name, value)
+            if getattr(self, name) != value:
+                setattr(self, name, value)
+
 
 class Page(BasicModel):
     __gtype_name__ = 'KaghezPage'
@@ -17,6 +16,7 @@ class Page(BasicModel):
     chapter_id = GObject.Property(type=int, default=0)
     url = GObject.Property(type=str, default="")
     paintable = GObject.Property(type=Gdk.Paintable, default=None)
+
 
 class Chapter(BasicModel):
     __gtype_name__ = 'KaghezChapter'
@@ -30,6 +30,7 @@ class Chapter(BasicModel):
     is_downloaded = GObject.Property(type=bool, default=False)
     is_read = GObject.Property(type=bool, default=False)
     last_page_read = GObject.Property(type=int, default=0)
+
 
 class Manga(BasicModel):
     __gtype_name__ = 'KaghezManga'
@@ -53,10 +54,14 @@ class Manga(BasicModel):
     chapters = GObject.Property(type=Gio.ListStore, default=None)
     total_chapters = GObject.Property(type=int, default=0)
 
+    def __init__(self):
+        super().__init__(chapters=Gio.ListStore(item_type=Chapter))
+        self.connect("notify::description", lambda *_: self.notify("short-description"))
+
     @GObject.Property(type=str)
     def short_description(self):
-        text = self.description or ""
-        return text.strip().split("\n\n")[0].strip()
+        return (self.description or "").strip().split("\n\n")[0].strip()
+
 
 class Extension(BasicModel):
     __gtype_name__ = 'KaghezExtension'
@@ -73,8 +78,8 @@ class Extension(BasicModel):
     has_update = GObject.Property(type=bool, default=False)
     is_obsolete = GObject.Property(type=bool, default=False)
     paintable = GObject.Property(type=Gdk.Paintable, default=None)
-
     is_busy = GObject.Property(type=bool, default=False)
+
 
 class Source(BasicModel):
     __gtype_name__ = 'KaghezSource'
@@ -87,6 +92,7 @@ class Source(BasicModel):
     extension_pkg_name = GObject.Property(type=str, default="")
     extension_name = GObject.Property(type=str, default="")
     paintable = GObject.Property(type=Gdk.Paintable, default=None)
+
 
 class Download(BasicModel):
     __gtype_name__ = 'KaghezDownload'

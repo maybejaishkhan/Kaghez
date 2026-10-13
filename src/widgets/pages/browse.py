@@ -1,8 +1,11 @@
 import asyncio
-from gi.repository import Gtk, Adw, Gio
+from gi.repository import Adw, Gio, Gtk
 
-from .sources import SourcesPage
-from .extensions import ExtensionsPage
+from .sources import SourcesPage  
+from .extensions import ExtensionsPage  
+
+from ...integrations.suwayomi import LOCAL_SOURCE_ID
+
 
 @Gtk.Template(resource_path='/com/rini/kaghez/pages/browse.ui')
 class BrowsePage(Adw.NavigationPage):
@@ -20,11 +23,11 @@ class BrowsePage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def on_sources_search_changed(self, entry):
-        self.sources_page.set_search_text(entry.get_text())
+        self.sources_page.search_text = entry.get_text().strip()
 
     @Gtk.Template.Callback()
     def on_extensions_search_changed(self, entry):
-        self.extensions_page.set_search_text(entry.get_text())
+        self.extensions_page.search_text = entry.get_text().strip()
 
     @Gtk.Template.Callback()
     def on_search_mode_changed(self, search_bar, *_):
@@ -34,7 +37,7 @@ class BrowsePage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def on_languages_clicked(self, *_):
-        langs = {s.lang for s in self.suwayomi.all_sources if s.id != "0"}
+        langs = {s.lang for s in self.suwayomi.all_sources if s.id != LOCAL_SOURCE_ID}
 
         group = Adw.PreferencesGroup(description="Only sources in these languages are used")
         for lang in sorted(langs, key=lambda l: (l != "all", l)):
