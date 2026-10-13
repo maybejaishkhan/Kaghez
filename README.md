@@ -19,7 +19,7 @@ Kaori connects to/runs [Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) a
 You can install Kaori as flatpak
 <p>
   <a href="https://github.com/riyaniii/Kaori/releases">
-    <img src="assets/badges/github-stable.svg">
+    <img src="assets/badges/github-stable.svg" height="100">
   </a>
 </p>
 
