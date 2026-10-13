@@ -4,7 +4,7 @@ TRI_STATES = ["IGNORE", "INCLUDE", "EXCLUDE"]
 
 
 class FilterEntry(GObject.Object):
-    __gtype_name__ = "KaghezFilterEntry"
+    __gtype_name__ = "KaoriFilterEntry"
 
     def __init__(self, node, path):
         super().__init__()
@@ -12,9 +12,9 @@ class FilterEntry(GObject.Object):
         self.path = path
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/source/filter.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/source/filter.ui')
 class SourceFilter(Adw.Dialog):
-    __gtype_name__ = "KaghezSourceFilter"
+    __gtype_name__ = "KaoriSourceFilter"
 
     filter_stack = Gtk.Template.Child()
     filter_page = Gtk.Template.Child()

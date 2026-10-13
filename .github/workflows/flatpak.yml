@@ -33,12 +33,12 @@ jobs:
 
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          bundle: com.rini.kaghez.flatpak
-          manifest-path: com.rini.kaghez.json
-          cache-key: flatpak-builder-${{ hashFiles('com.rini.kaghez.json', 'python3-*.json') }}
+          bundle: com.rini.kaori.flatpak
+          manifest-path: com.rini.kaori.json
+          cache-key: flatpak-builder-${{ hashFiles('com.rini.kaori.json', 'python3-*.json') }}
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: com.rini.kaghez.flatpak
+          files: com.rini.kaori.flatpak

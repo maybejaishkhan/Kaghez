@@ -1,9 +1,9 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezMangaPage : Adw.NavigationPage {
+template $KaoriMangaPage : Adw.NavigationPage {
   shown => $on_shown();
-  title: bind template.model as <$KaghezManga> .title;
+  title: bind template.model as <$KaoriManga> .title;
   child: Adw.BreakpointBin bin {
     width-request: 300;
     height-request: 300;
@@ -103,7 +103,7 @@ template $KaghezMangaPage : Adw.NavigationPage {
           }
 
           [poster]
-          $KaghezMangaCard card {
+          $KaoriMangaCard card {
             model: bind template.model;
             width-request: 185;
             show_title: false;
@@ -118,7 +118,7 @@ template $KaghezMangaPage : Adw.NavigationPage {
               styles [
                 "title-2"
               ]
-              label: bind template.model as <$KaghezManga> .title;
+              label: bind template.model as <$KaoriManga> .title;
               selectable: true;
               xalign: 0.0;
               wrap: true;
@@ -129,7 +129,7 @@ template $KaghezMangaPage : Adw.NavigationPage {
                 "dimmed",
                 "body"
               ]
-              label: bind template.model as <$KaghezManga> .author;
+              label: bind template.model as <$KaoriManga> .author;
               selectable: true;
               xalign: 0.0;
               wrap: true;
@@ -147,7 +147,7 @@ template $KaghezMangaPage : Adw.NavigationPage {
               styles [
                 "suggested-action"
               ]
-              label: bind $get_read_button_label(template.model as <$KaghezManga> .first_unread_chapter) as <string>;
+              label: bind $get_read_button_label(template.model as <$KaoriManga> .first_unread_chapter) as <string>;
               clicked => $on_read_clicked();
             }
             Gtk.Button chapters {
@@ -155,8 +155,8 @@ template $KaghezMangaPage : Adw.NavigationPage {
               action-name: "app.toggle_chapter_panel";
             }
             Gtk.Button library {
-              icon-name: bind $get_library_icon_name(template.model as <$KaghezManga> .in_library) as <string>;
-              tooltip-text: bind $get_library_button_tooltip(template.model as <$KaghezManga> .in_library) as <string>;
+              icon-name: bind $get_library_icon_name(template.model as <$KaoriManga> .in_library) as <string>;
+              tooltip-text: bind $get_library_button_tooltip(template.model as <$KaoriManga> .in_library) as <string>;
               clicked => $on_library_button_clicked();
             }
           }
@@ -170,7 +170,7 @@ template $KaghezMangaPage : Adw.NavigationPage {
               styles [
                 "body",
               ]
-              label: bind $get_description(template.model as <$KaghezManga> .description) as <string>;
+              label: bind $get_description(template.model as <$KaoriManga> .description) as <string>;
               selectable: true;
               xalign: 0.0;
               wrap: true;
@@ -183,7 +183,7 @@ template $KaghezMangaPage : Adw.NavigationPage {
               ]
               line-spacing: 6;
               child-spacing: 6;
-              visible: bind $populate_genres(template.model as <$KaghezManga> .genre) as <bool>;
+              visible: bind $populate_genres(template.model as <$KaoriManga> .genre) as <bool>;
             }
           }
         };

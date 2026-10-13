@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezWindow : Adw.ApplicationWindow {
+template $KaoriWindow : Adw.ApplicationWindow {
   width-request: 1100;
   height-request: 700;
 
@@ -18,7 +18,7 @@ template $KaghezWindow : Adw.ApplicationWindow {
     enable-hide-gesture: true;
     collapsed: true;
     sidebar-position: end;
-    sidebar: $KaghezChapterPanel chapter_panel {};
+    sidebar: $KaoriChapterPanel chapter_panel {};
 
     content: Adw.NavigationView main_nav_view {
       Adw.NavigationPage {
@@ -60,7 +60,7 @@ template $KaghezWindow : Adw.ApplicationWindow {
                 child: Adw.NavigationView home_nav_view {
                   Adw.NavigationPage {
                     title: "Home";
-                    child: $KaghezHomePage {};
+                    child: $KaoriHomePage {};
                   }
                 };
               }
@@ -72,7 +72,7 @@ template $KaghezWindow : Adw.ApplicationWindow {
                 child: Adw.NavigationView library_nav_view {
                   Adw.NavigationPage {
                     title: "Library";
-                    child: $KaghezLibraryPage {};
+                    child: $KaoriLibraryPage {};
                   }
                 };
               }
@@ -84,7 +84,7 @@ template $KaghezWindow : Adw.ApplicationWindow {
                 child: Adw.NavigationView search_nav_view {
                   Adw.NavigationPage {
                     title: "Search";
-                    child: $KaghezSearchPage {};
+                    child: $KaoriSearchPage {};
                   }
                 };
               }
@@ -96,7 +96,7 @@ template $KaghezWindow : Adw.ApplicationWindow {
                 child: Adw.NavigationView browse_nav_view {
                   Adw.NavigationPage {
                     title: "Browse";
-                    child: $KaghezBrowsePage {};
+                    child: $KaoriBrowsePage {};
                   }
                 };
               }
@@ -108,7 +108,7 @@ template $KaghezWindow : Adw.ApplicationWindow {
                 child: Adw.NavigationView downloads_nav_view {
                   Adw.NavigationPage {
                     title: "Downloads";
-                    child: $KaghezDownloadsPage {};
+                    child: $KaoriDownloadsPage {};
                   }
                 };
               }

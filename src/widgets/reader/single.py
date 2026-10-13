@@ -3,9 +3,9 @@ from gi.repository import Gtk
 from .base import PagedReader
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/reader/single.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/reader/single.ui')
 class SinglePageReader(PagedReader):
-    __gtype_name__ = "KaghezSinglePageReader"
+    __gtype_name__ = "KaoriSinglePageReader"
 
     picture = Gtk.Template.Child()
 

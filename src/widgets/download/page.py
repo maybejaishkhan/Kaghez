@@ -3,9 +3,9 @@ from gi.repository import Gtk, Adw, Gio, GLib, Pango
 
 from .row import DownloadRow
 
-@Gtk.Template(resource_path='/com/rini/kaghez/download/page.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/download/page.ui')
 class DownloadsPage(Adw.NavigationPage):
-    __gtype_name__ = "KaghezDownloadsPage"
+    __gtype_name__ = "KaoriDownloadsPage"
 
     download_stack = Gtk.Template.Child()
     download_list = Gtk.Template.Child()

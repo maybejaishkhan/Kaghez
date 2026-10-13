@@ -2,7 +2,7 @@ from gi.repository import Gdk, Gio, GObject
 
 
 class BasicModel(GObject.Object):
-    __gtype_name__ = 'KaghezBasicModel'
+    __gtype_name__ = 'KaoriBasicModel'
 
     def update_data(self, **kwargs):
         for name, value in kwargs.items():
@@ -11,7 +11,7 @@ class BasicModel(GObject.Object):
 
 
 class Page(BasicModel):
-    __gtype_name__ = 'KaghezPage'
+    __gtype_name__ = 'KaoriPage'
     index = GObject.Property(type=int, default=0)
     chapter_id = GObject.Property(type=int, default=0)
     url = GObject.Property(type=str, default="")
@@ -19,7 +19,7 @@ class Page(BasicModel):
 
 
 class Chapter(BasicModel):
-    __gtype_name__ = 'KaghezChapter'
+    __gtype_name__ = 'KaoriChapter'
     id = GObject.Property(type=int, default=0)
     source_order = GObject.Property(type=int, default=0)
     chapter_number = GObject.Property(type=float, default=0.0)
@@ -33,7 +33,7 @@ class Chapter(BasicModel):
 
 
 class Manga(BasicModel):
-    __gtype_name__ = 'KaghezManga'
+    __gtype_name__ = 'KaoriManga'
     id = GObject.Property(type=int, default=0)
     title = GObject.Property(type=str, default="")
     author = GObject.Property(type=str, default="")
@@ -64,7 +64,7 @@ class Manga(BasicModel):
 
 
 class Extension(BasicModel):
-    __gtype_name__ = 'KaghezExtension'
+    __gtype_name__ = 'KaoriExtension'
     pkg_name = GObject.Property(type=str, default="")
     name = GObject.Property(type=str, default="")
     lang = GObject.Property(type=str, default="")
@@ -82,7 +82,7 @@ class Extension(BasicModel):
 
 
 class Source(BasicModel):
-    __gtype_name__ = 'KaghezSource'
+    __gtype_name__ = 'KaoriSource'
     id = GObject.Property(type=str, default="")
     name = GObject.Property(type=str, default="")
     lang = GObject.Property(type=str, default="")
@@ -95,7 +95,7 @@ class Source(BasicModel):
 
 
 class Download(BasicModel):
-    __gtype_name__ = 'KaghezDownload'
+    __gtype_name__ = 'KaoriDownload'
     chapter_id = GObject.Property(type=int, default=0)
     chapter_name = GObject.Property(type=str, default="")
     manga_id = GObject.Property(type=int, default=0)

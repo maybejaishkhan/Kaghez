@@ -1,5 +1,5 @@
 {
-    "id": "com.rini.kaghez",
+    "id": "com.rini.kaori",
     "runtime": "org.gnome.Platform",
     "runtime-version": "51",
     "sdk": "org.gnome.Sdk",
@@ -7,7 +7,7 @@
         "org.freedesktop.Sdk.Extension.rust-stable",
         "org.freedesktop.Sdk.Extension.openjdk21"
     ],
-    "command": "kaghez",
+    "command": "kaori",
     "finish-args": [
         "--share=network",
         "--share=ipc",
@@ -65,7 +65,7 @@
             ]
         },
         {
-            "name": "kaghez",
+            "name": "kaori",
             "builddir": true,
             "buildsystem": "meson",
             "sources": [

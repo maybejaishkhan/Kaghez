@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezBrowsePage : Adw.NavigationPage {
+template $KaoriBrowsePage : Adw.NavigationPage {
   title: "Browse";
   tag: "browse";
 
@@ -70,7 +70,7 @@ template $KaghezBrowsePage : Adw.NavigationPage {
           title: "Sources";
           icon-name: "chain-link-symbolic";
           child: Adw.NavigationView source_nav_view {
-            $KaghezSourcesPage sources_page {}
+            $KaoriSourcesPage sources_page {}
           };
         }
 
@@ -78,7 +78,7 @@ template $KaghezBrowsePage : Adw.NavigationPage {
           name: "extensions";
           title: "Extensions";
           icon-name: "application-x-addon-symbolic";
-          child: $KaghezExtensionsPage extensions_page {};
+          child: $KaoriExtensionsPage extensions_page {};
         }
       };
     };

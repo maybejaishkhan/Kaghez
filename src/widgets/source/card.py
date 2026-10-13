@@ -2,9 +2,9 @@ from gi.repository import Gtk, Adw, Gio, GObject
 
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaghez/source/card.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/source/card.ui')
 class SourceCard(Gtk.Box):
-    __gtype_name__ = "KaghezSourceCard"
+    __gtype_name__ = "KaoriSourceCard"
 
     model = GObject.Property(type=models.Source)
 

@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezExtensionCard : Gtk.Box {
+template $KaoriExtensionCard : Gtk.Box {
   orientation: horizontal;
   spacing: 6;
   margin-start: 6;
@@ -11,7 +11,7 @@ template $KaghezExtensionCard : Gtk.Box {
 
   Gtk.Image icon {
     pixel-size: 50;
-    paintable: bind template.model as <$KaghezExtension> .paintable;
+    paintable: bind template.model as <$KaoriExtension> .paintable;
   }
 
   Gtk.Box info {
@@ -21,7 +21,7 @@ template $KaghezExtensionCard : Gtk.Box {
     hexpand: true;
 
     Gtk.Label name {
-      label: bind template.model as <$KaghezExtension> .name;
+      label: bind template.model as <$KaoriExtension> .name;
       xalign: 0.0;
       ellipsize: end;
     }
@@ -31,7 +31,7 @@ template $KaghezExtensionCard : Gtk.Box {
         "body",
         "dimmed"
       ]
-      label: bind template.model as <$KaghezExtension> .version-name;
+      label: bind template.model as <$KaoriExtension> .version-name;
       xalign: 0.0;
     }
   }
@@ -42,9 +42,9 @@ template $KaghezExtensionCard : Gtk.Box {
         "flat",
         "circular"
       ]
-      sensitive: bind $get_not(template.model as <$KaghezExtension> .is_busy) as <bool>;
-      tooltip-text: bind $get_action_button_tooltip(template.model as <$KaghezExtension> .is_installed, template.model as <$KaghezExtension> .has_update) as <string>;
-      icon-name: bind $get_action_button_icon_name(template.model as <$KaghezExtension> .is_installed, template.model as <$KaghezExtension> .has_update) as <string>;
+      sensitive: bind $get_not(template.model as <$KaoriExtension> .is_busy) as <bool>;
+      tooltip-text: bind $get_action_button_tooltip(template.model as <$KaoriExtension> .is_installed, template.model as <$KaoriExtension> .has_update) as <string>;
+      icon-name: bind $get_action_button_icon_name(template.model as <$KaoriExtension> .is_installed, template.model as <$KaoriExtension> .has_update) as <string>;
       clicked => $on_button_clicked();
     }
 }

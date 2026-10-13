@@ -3,9 +3,9 @@ from gi.repository import Gtk
 from .base import PagedReader
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/reader/double.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/reader/double.ui')
 class DoublePageReader(PagedReader):
-    __gtype_name__ = "KaghezDoublePageReader"
+    __gtype_name__ = "KaoriDoublePageReader"
 
     spread = Gtk.Template.Child()
     left_frame = Gtk.Template.Child()

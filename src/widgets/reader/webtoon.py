@@ -22,9 +22,9 @@ class TransitionPage(models.Page):
         self.chapter = chapter
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/reader/webtoon.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/reader/webtoon.ui')
 class WebtoonReader(ReaderBase):
-    __gtype_name__ = "KaghezWebtoonReader"
+    __gtype_name__ = "KaoriWebtoonReader"
 
     orientation = GObject.Property(type=Gtk.Orientation, default=Gtk.Orientation.VERTICAL)
 

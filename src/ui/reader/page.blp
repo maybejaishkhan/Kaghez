@@ -1,8 +1,8 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezReaderPage : Adw.NavigationPage {
-  title: bind template.manga_model as <$KaghezManga> .title;
+template $KaoriReaderPage : Adw.NavigationPage {
+  title: bind template.manga_model as <$KaoriManga> .title;
 
   can-pop: false;
 
@@ -29,18 +29,18 @@ template $KaghezReaderPage : Adw.NavigationPage {
         Gtk.Button {
           icon-name: "go-previous-symbolic";
           clicked => $on_back_clicked();
-          tooltip-text: bind template.manga_model as <$KaghezManga> .title;
+          tooltip-text: bind template.manga_model as <$KaoriManga> .title;
         }
 
         [start]
         Gtk.Label {
           styles ["little-bold"]
-          label: bind template.manga_model as <$KaghezManga> .title;
+          label: bind template.manga_model as <$KaoriManga> .title;
           ellipsize: middle;
         }
 
         title-widget: Adw.WindowTitle {
-          title: bind template.chapter_model as <$KaghezChapter> .name;
+          title: bind template.chapter_model as <$KaoriChapter> .name;
         };
 
         [end]

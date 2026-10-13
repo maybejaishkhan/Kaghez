@@ -10,9 +10,9 @@ MODES = (
 )
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/preferences/preferences.ui')
-class KaghezPreferences(Adw.PreferencesDialog):
-    __gtype_name__ = "KaghezPreferencesDialog"
+@Gtk.Template(resource_path='/com/rini/kaori/preferences/preferences.ui')
+class KaoriPreferences(Adw.PreferencesDialog):
+    __gtype_name__ = "KaoriPreferencesDialog"
 
     cbz_row = Gtk.Template.Child()
     location_row = Gtk.Template.Child()

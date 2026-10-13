@@ -7,9 +7,9 @@ from .extensions import ExtensionsPage
 from ...integrations.suwayomi import LOCAL_SOURCE_ID
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/pages/browse.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/pages/browse.ui')
 class BrowsePage(Adw.NavigationPage):
-    __gtype_name__ = "KaghezBrowsePage"
+    __gtype_name__ = "KaoriBrowsePage"
 
     search_bar = Gtk.Template.Child()
     sources_entry = Gtk.Template.Child()

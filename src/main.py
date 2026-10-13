@@ -17,11 +17,11 @@ from gql.transport.exceptions import TransportError
 
 from .constants import NAME, set_version
 from .integrations import Suwayomi
-from .widgets import KaghezWindow, build_shortcuts
-from .widgets.preferences import KaghezPreferences
+from .widgets import KaoriWindow, build_shortcuts
+from .widgets.preferences import KaoriPreferences
 from .widgets.setup import SetupWindow
 
-APPLICATION_ID = 'com.rini.kaghez'
+APPLICATION_ID = 'com.rini.kaori'
 JAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    'Suwayomi-Server.jar')
 
@@ -49,12 +49,12 @@ def run_until_done(coro, timeout: float) -> None:
         task.cancel()
 
 
-class KaghezApplication(Adw.Application):
+class KaoriApplication(Adw.Application):
 
     def __init__(self, version: str) -> None:
         super().__init__(application_id=APPLICATION_ID,
                          flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
-                         resource_base_path='/com/rini/kaghez')
+                         resource_base_path='/com/rini/kaori')
         self.version = version
         self.settings = Gio.Settings(schema_id=APPLICATION_ID)
         self.suwayomi = Suwayomi()
@@ -90,7 +90,7 @@ class KaghezApplication(Adw.Application):
     def start_server(self) -> None:
         
         
-        log_dir = os.path.join(GLib.get_user_cache_dir(), 'kaghez')
+        log_dir = os.path.join(GLib.get_user_cache_dir(), 'kaori')
         os.makedirs(log_dir, exist_ok=True)
         self.server_log = open(os.path.join(log_dir, 'server.log'), 'ab')
         self.server = subprocess.Popen(
@@ -131,7 +131,7 @@ class KaghezApplication(Adw.Application):
 
         self.settings.set_string('suwayomi-mode', mode)
         self.settings.set_string('suwayomi-url', '' if local else url)
-        KaghezWindow(application=self).present()
+        KaoriWindow(application=self).present()
         return True
 
     async def wait_for_server(self) -> bool:
@@ -175,7 +175,7 @@ class KaghezApplication(Adw.Application):
         ).present(self.props.active_window)
 
     def on_preferences_action(self, *args) -> None:
-        KaghezPreferences().present(self.props.active_window)
+        KaoriPreferences().present(self.props.active_window)
 
     def on_shortcuts_action(self, *args) -> None:
         build_shortcuts().present(self.props.active_window)
@@ -190,4 +190,4 @@ class KaghezApplication(Adw.Application):
 
 def main(version: str) -> int:
     set_version(version)
-    return KaghezApplication(version).run(sys.argv)
+    return KaoriApplication(version).run(sys.argv)

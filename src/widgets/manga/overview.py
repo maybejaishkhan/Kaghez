@@ -101,9 +101,9 @@ def extract_meat(description: str) -> str:
     return strip_labels(description.strip().split('\n'))
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/manga/overview.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/manga/overview.ui')
 class MangaOverview(Gtk.Box):
-    __gtype_name__ = "KaghezMangaOverview"
+    __gtype_name__ = "KaoriMangaOverview"
 
     model = GObject.Property(type=models.Manga)
 

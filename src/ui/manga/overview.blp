@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezMangaOverview : Gtk.Box {
+template $KaoriMangaOverview : Gtk.Box {
   orientation: horizontal;
   spacing: 12;
   height-request: 290;
@@ -10,7 +10,7 @@ template $KaghezMangaOverview : Gtk.Box {
     released => $on_overview_clicked();
   }
 
-  $KaghezMangaCard card {
+  $KaoriMangaCard card {
     model: bind template.model;
     show_title: false;
     width-request: 185;
@@ -24,7 +24,7 @@ template $KaghezMangaOverview : Gtk.Box {
       styles [
         "title-3"
       ]
-      label: bind template.model as <$KaghezManga> .title;
+      label: bind template.model as <$KaoriManga> .title;
       selectable: true;
       xalign: 0.0;
       wrap: true;
@@ -45,7 +45,7 @@ template $KaghezMangaOverview : Gtk.Box {
       styles [
         "body",
       ]
-      label: bind $get_shortened_description(template.model as <$KaghezManga> .description) as <string>;
+      label: bind $get_shortened_description(template.model as <$KaoriManga> .description) as <string>;
       selectable: true;
       xalign: 0.0;
       wrap: true;

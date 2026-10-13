@@ -4,9 +4,9 @@ from gi.repository import Gtk, GObject, Gio, GLib, Adw
 from ..manga import MangaCard
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaghez/containers/row.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/containers/row.ui')
 class MangaRow(Gtk.Box):
-    __gtype_name__ = 'KaghezMangaRow'
+    __gtype_name__ = 'KaoriMangaRow'
 
     listview = Gtk.Template.Child()
 

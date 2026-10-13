@@ -2,9 +2,9 @@ from gi.repository import Gtk, Adw, Gio, GObject
 
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaghez/extension/dialog.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/extension/dialog.ui')
 class ExtensionDialog(Adw.Dialog):
-    __gtype_name__ = "KaghezExtensionDialog"
+    __gtype_name__ = "KaoriExtensionDialog"
 
     model = GObject.Property(type=models.Extension)
 

@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezDownloadRow : Gtk.Box {
+template $KaoriDownloadRow : Gtk.Box {
   orientation: horizontal;
   spacing: 12;
   margin-start: 12;
@@ -27,7 +27,7 @@ template $KaghezDownloadRow : Gtk.Box {
       styles [
         "heading"
       ]
-      label: bind template.model as <$KaghezDownload> .manga_title;
+      label: bind template.model as <$KaoriDownload> .manga_title;
       xalign: 0.0;
       ellipsize: end;
     }
@@ -36,12 +36,12 @@ template $KaghezDownloadRow : Gtk.Box {
         "dimmed",
         "body"
       ]
-      label: bind template.model as <$KaghezDownload> .chapter_name;
+      label: bind template.model as <$KaoriDownload> .chapter_name;
       xalign: 0.0;
       ellipsize: end;
     }
     Gtk.ProgressBar {
-      fraction: bind template.model as <$KaghezDownload> .progress;
+      fraction: bind template.model as <$KaoriDownload> .progress;
     }
   }
 
@@ -53,7 +53,7 @@ template $KaghezDownloadRow : Gtk.Box {
     valign: center;
     icon-name: "view-refresh-symbolic";
     tooltip-text: _("Retry");
-    visible: bind $is_error(template.model as <$KaghezDownload> .state) as <bool>;
+    visible: bind $is_error(template.model as <$KaoriDownload> .state) as <bool>;
     clicked => $on_retry_clicked();
   }
 

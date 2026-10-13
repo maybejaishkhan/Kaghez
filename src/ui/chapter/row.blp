@@ -45,14 +45,14 @@ menu chapter_menu {
   }
 }
 
-template $KaghezChapterRow : Gtk.Box {
+template $KaoriChapterRow : Gtk.Box {
   orientation: vertical;
   spacing: 6;
   margin-start: 6;
   margin-end: 6;
   margin-top: 6;
   margin-bottom: 6;
-  opacity: bind $get_opacity(template.model as <$KaghezChapter>.is_read) as <double>;
+  opacity: bind $get_opacity(template.model as <$KaoriChapter>.is_read) as <double>;
 
   Gtk.GestureClick {
     button: 3;
@@ -71,20 +71,20 @@ template $KaghezChapterRow : Gtk.Box {
       styles [
         "body"
       ]
-      label: bind template.model as <$KaghezChapter> .name;
+      label: bind template.model as <$KaoriChapter> .name;
       xalign: 0.0;
       ellipsize: middle;
-      tooltip-text: bind template.model as <$KaghezChapter> .name;
+      tooltip-text: bind template.model as <$KaoriChapter> .name;
     }
 
     Gtk.Image bookmarked {
       icon-name: "starred-symbolic";
-      visible: bind template.model as <$KaghezChapter> .is_bookmarked;
+      visible: bind template.model as <$KaoriChapter> .is_bookmarked;
     }
 
     Gtk.Image downloaded {
       icon-name: "drive-harddisk-symbolic";
-      visible: bind template.model as <$KaghezChapter> .is_downloaded;
+      visible: bind template.model as <$KaoriChapter> .is_downloaded;
     }
   }
 
@@ -96,15 +96,15 @@ template $KaghezChapterRow : Gtk.Box {
       styles [
         "body"
       ]
-      label: bind $get_formatted_upload_date(template.model as <$KaghezChapter> .upload_date) as <string>;
+      label: bind $get_formatted_upload_date(template.model as <$KaoriChapter> .upload_date) as <string>;
       xalign: 0.0;
     }
 
     [end]
     Gtk.Label progress {
       styles ["body"]
-      label: bind $get_formatted_read_count(template.model as <$KaghezChapter>.last_page_read, template.model as <$KaghezChapter>.page_count) as <string>;
-      visible: bind $get_is_reading(template.model as <$KaghezChapter>.last_page_read) as <bool>;
+      label: bind $get_formatted_read_count(template.model as <$KaoriChapter>.last_page_read, template.model as <$KaoriChapter>.page_count) as <string>;
+      visible: bind $get_is_reading(template.model as <$KaoriChapter>.last_page_read) as <bool>;
       xalign: 0.0;
     }
   }

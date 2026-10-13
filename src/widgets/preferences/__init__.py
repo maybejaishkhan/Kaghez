@@ -1,1 +1,1 @@
-from .preferences import KaghezPreferences
+from .preferences import KaoriPreferences

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/com/rini/kaghez">
+  <gresource prefix="/com/rini/kaori">
     <file>style.css</file>
     <file>icons/compass-symbolic.svg</file>
     <file>icons/library-symbolic.svg</file>

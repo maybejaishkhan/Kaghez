@@ -3,9 +3,9 @@ from gi.repository import Gtk, Adw, Gio
 
 DEFAULT_DESCRIPTION = "Run Suwayomi locally or connect to an existing server"
 
-@Gtk.Template(resource_path='/com/rini/kaghez/setup.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/setup.ui')
 class SetupWindow(Adw.ApplicationWindow):
-    __gtype_name__ = 'KaghezSetupWindow'
+    __gtype_name__ = 'KaoriSetupWindow'
 
     status_page = Gtk.Template.Child()
     local_row = Gtk.Template.Child()

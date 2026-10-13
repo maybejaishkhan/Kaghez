@@ -2,9 +2,9 @@ from gi.repository import Gtk, Adw, Gio, GObject
 
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaghez/manga/card.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/manga/card.ui')
 class MangaCard(Gtk.Box):
-    __gtype_name__ = "KaghezMangaCard"
+    __gtype_name__ = "KaoriMangaCard"
 
     model = GObject.Property(type=models.Manga)
     show_title = GObject.Property(type=bool, default=True)

@@ -75,9 +75,9 @@ def markdown_to_pango(md: str) -> str:
     return "\n".join(out)
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/manga/page.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/manga/page.ui')
 class MangaPage(Adw.NavigationPage):
-    __gtype_name__ = "KaghezMangaPage"
+    __gtype_name__ = "KaoriMangaPage"
 
     model = GObject.Property(type=models.Manga)
 

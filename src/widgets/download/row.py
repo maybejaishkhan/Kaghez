@@ -2,9 +2,9 @@ from gi.repository import Gtk, Gdk, GObject
 
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaghez/download/row.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/download/row.ui')
 class DownloadRow(Gtk.Box):
-    __gtype_name__ = "KaghezDownloadRow"
+    __gtype_name__ = "KaoriDownloadRow"
 
     model = GObject.Property(type=models.Download)
 

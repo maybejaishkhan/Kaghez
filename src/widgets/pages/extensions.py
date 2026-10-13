@@ -4,9 +4,9 @@ from gi.repository import Adw, Gio, GLib, GObject, Gtk
 from ..extension import ExtensionCard
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/pages/extensions.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/pages/extensions.ui')
 class ExtensionsPage(Adw.NavigationPage):
-    __gtype_name__ = "KaghezExtensionsPage"
+    __gtype_name__ = "KaoriExtensionsPage"
 
     search_text = GObject.Property(type=str)
     extensions = GObject.Property(type=Gio.ListStore)

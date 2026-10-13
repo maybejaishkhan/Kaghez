@@ -13,7 +13,7 @@ POOL_MAX = 6
 
 
 class Panel(Gtk.Stack):
-    __gtype_name__ = "KaghezPanel"
+    __gtype_name__ = "KaoriPanel"
 
     def __init__(self):
         super().__init__()
@@ -46,7 +46,7 @@ class Panel(Gtk.Stack):
 
 
 class Canvas(Gtk.Widget, Gtk.Scrollable):
-    __gtype_name__ = "KaghezCanvas"
+    __gtype_name__ = "KaoriCanvas"
 
     orientation = GObject.Property(type=Gtk.Orientation, default=Gtk.Orientation.VERTICAL)
     hadjustment = GObject.Property(type=Gtk.Adjustment)

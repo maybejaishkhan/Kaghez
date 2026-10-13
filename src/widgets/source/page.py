@@ -9,9 +9,9 @@ from ...integrations import models
 from ...integrations.suwayomi import SourceMangaType
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/source/page.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/source/page.ui')
 class SourcePage(Adw.NavigationPage):
-    __gtype_name__ = "KaghezSourcePage"
+    __gtype_name__ = "KaoriSourcePage"
 
     model = GObject.Property(type=models.Source)
 

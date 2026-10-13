@@ -1,14 +1,14 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezMangaCard : Gtk.Box {
+template $KaoriMangaCard : Gtk.Box {
   orientation: vertical;
   spacing: 6;
   margin-start: 6;
   margin-end: 6;
   margin-top: 6;
   margin-bottom: 6;
-  tooltip-text: bind template.model as <$KaghezManga> .title;
+  tooltip-text: bind template.model as <$KaoriManga> .title;
   Gtk.AspectFrame {
     ratio: 0.667;
     obey-child: false;
@@ -17,7 +17,7 @@ template $KaghezMangaCard : Gtk.Box {
       styles [
         "rounded"
       ]
-      paintable: bind template.model as <$KaghezManga> .paintable;
+      paintable: bind template.model as <$KaoriManga> .paintable;
       content-fit: cover;
     };
   }
@@ -26,7 +26,7 @@ template $KaghezMangaCard : Gtk.Box {
     styles [
       "heading"
     ]
-    text: bind template.model as <$KaghezManga> .title;
+    text: bind template.model as <$KaoriManga> .title;
     visible: bind template.show_title;
     xalign: 0.0;
     text-overflow: ellipsize_end;

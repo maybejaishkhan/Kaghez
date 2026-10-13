@@ -4,7 +4,7 @@ from . import models
 
 
 class BasicList(Gio.ListStore):
-    __gtype_name__ = 'KaghezBasicList'
+    __gtype_name__ = 'KaoriBasicList'
 
     def __init__(self, item_type, batch_size=10):
         super().__init__(item_type)

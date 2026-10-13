@@ -36,9 +36,9 @@ class Reader:
     widget: type
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/reader/page.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/reader/page.ui')
 class ReaderPage(Adw.NavigationPage):
-    __gtype_name__ = "KaghezReaderPage"
+    __gtype_name__ = "KaoriReaderPage"
 
     manga_model = GObject.Property(type=models.Manga)
     chapter_model = GObject.Property(type=models.Chapter)

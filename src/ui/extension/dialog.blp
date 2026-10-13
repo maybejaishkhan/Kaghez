@@ -1,8 +1,8 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezExtensionDialog : Adw.Dialog {
-  title: bind template.model as <$KaghezManga> .name;
+template $KaoriExtensionDialog : Adw.Dialog {
+  title: bind template.model as <$KaoriManga> .name;
   can-close: true;
   content-width: 300;
   content-height: 300;
@@ -18,7 +18,7 @@ template $KaghezExtensionDialog : Adw.Dialog {
       spacing: 12;
 
       Gtk.Image {
-        paintable: bind template.model as <$KaghezExtension> .paintable;
+        paintable: bind template.model as <$KaoriExtension> .paintable;
         pixel-size: 150;
       }
 
@@ -26,7 +26,7 @@ template $KaghezExtensionDialog : Adw.Dialog {
         styles [
           "title-4"
         ]
-        label: bind template.model as <$KaghezExtension> .name;
+        label: bind template.model as <$KaoriExtension> .name;
       }
 
       Gtk.Box {
@@ -39,21 +39,21 @@ template $KaghezExtensionDialog : Adw.Dialog {
           "heading",
           "dimmed"
           ]
-          label: bind template.model as <$KaghezExtension> .version_name;
+          label: bind template.model as <$KaoriExtension> .version_name;
         }
 
         Gtk.Label language {
           styles [
           "heading"
           ]
-          label: bind template.model as <$KaghezExtension> .lang;
+          label: bind template.model as <$KaoriExtension> .lang;
         }
 
         Gtk.Label age_rating {
           styles [
           "heading"
           ]
-          label: bind $get_age_rating(template.model as <$KaghezExtension> .is_nsfw) as <string>;
+          label: bind $get_age_rating(template.model as <$KaoriExtension> .is_nsfw) as <string>;
         }
       }
     };

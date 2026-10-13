@@ -4,9 +4,9 @@ from ...integrations import models
 
 from .row import ChapterRow
 
-@Gtk.Template(resource_path='/com/rini/kaghez/chapter/panel.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/chapter/panel.ui')
 class ChapterPanel(Adw.NavigationPage):
-    __gtype_name__ = "KaghezChapterPanel"
+    __gtype_name__ = "KaoriChapterPanel"
 
     chapter_list = Gtk.Template.Child()
     stack = Gtk.Template.Child()

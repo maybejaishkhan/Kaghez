@@ -1,6 +1,6 @@
 from gi.repository import Adw
 
-from kaghez.widgets.reader.page import ReaderPage
+from kaori.widgets.reader.page import ReaderPage
 
 from . import widgets as Widgets
 

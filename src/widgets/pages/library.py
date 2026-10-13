@@ -5,9 +5,9 @@ from ..manga import MangaCard
 from ..containers import MangaGrid  
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/pages/library.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/pages/library.ui')
 class LibraryPage(Adw.NavigationPage):
-    __gtype_name__ = "KaghezLibraryPage"
+    __gtype_name__ = "KaoriLibraryPage"
 
     manga_grid = Gtk.Template.Child()
 

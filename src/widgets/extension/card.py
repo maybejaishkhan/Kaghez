@@ -2,9 +2,9 @@ from gi.repository import Gtk, GLib, Gio, GObject
 
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaghez/extension/card.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/extension/card.ui')
 class ExtensionCard(Gtk.Box):
-    __gtype_name__ = "KaghezExtensionCard"
+    __gtype_name__ = "KaoriExtensionCard"
 
     model = GObject.Property(type=models.Extension)
 

@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezSourceCard : Gtk.Box {
+template $KaoriSourceCard : Gtk.Box {
   orientation: horizontal;
   spacing: 6;
   margin-start: 6;
@@ -10,7 +10,7 @@ template $KaghezSourceCard : Gtk.Box {
   margin-bottom: 6;
 
   Gtk.Image logo {
-    paintable: bind template.model as <$KaghezSource> .paintable;
+    paintable: bind template.model as <$KaoriSource> .paintable;
     pixel-size: 50;
   }
 
@@ -18,7 +18,7 @@ template $KaghezSourceCard : Gtk.Box {
     styles [
       "body"
     ]
-    label: bind template.model as <$KaghezSource> .name;
+    label: bind template.model as <$KaoriSource> .name;
     xalign: 0.0;
   }
 }

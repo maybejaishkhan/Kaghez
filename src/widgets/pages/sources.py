@@ -4,9 +4,9 @@ from gi.repository import Adw, Gio, GLib, GObject, Gtk
 from ..source import SourceCard
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/pages/sources.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/pages/sources.ui')
 class SourcesPage(Adw.NavigationPage):
-    __gtype_name__ = "KaghezSourcesPage"
+    __gtype_name__ = "KaoriSourcesPage"
 
     search_text = GObject.Property(type=str)
     sources = GObject.Property(type=Gio.ListStore)

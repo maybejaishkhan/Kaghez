@@ -16,9 +16,9 @@ SWIPE_COMMIT_DISTANCE = 40.0
 SWIPE_COMMIT_VELOCITY = 600.0
 
 
-@Gtk.Template(resource_path='/com/rini/kaghez/window.ui')
-class KaghezWindow(Adw.ApplicationWindow):
-    __gtype_name__ = 'KaghezWindow'
+@Gtk.Template(resource_path='/com/rini/kaori/window.ui')
+class KaoriWindow(Adw.ApplicationWindow):
+    __gtype_name__ = 'KaoriWindow'
 
     name = GObject.Property(type=str)
 

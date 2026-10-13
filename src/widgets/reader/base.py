@@ -23,7 +23,7 @@ def adjacent_chapter(manga, chapter, direction):
 
 
 class ReaderBase(Adw.Bin):
-    __gtype_name__ = "KaghezReaderBase"
+    __gtype_name__ = "KaoriReaderBase"
 
     chapter_model = GObject.Property(type=models.Chapter)
     manga_model = GObject.Property(type=models.Manga)
@@ -124,7 +124,7 @@ class ReaderBase(Adw.Bin):
 
 
 class PagedReader(ReaderBase):
-    __gtype_name__ = "KaghezPagedReader"
+    __gtype_name__ = "KaoriPagedReader"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

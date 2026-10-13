@@ -63,7 +63,7 @@ def makeClient(url: str) -> Client:
 
 
 class Suwayomi(GObject.Object):
-    __gtype_name__ = 'KaghezIntegrationSuwayomi'
+    __gtype_name__ = 'KaoriIntegrationSuwayomi'
 
     MODE_KEY = "webUI_readingMode"
     DIRECTION_KEY = "webUI_readingDirection"
@@ -93,7 +93,7 @@ class Suwayomi(GObject.Object):
         )
         self.decode_slots = asyncio.Semaphore(DECODE_WORKERS)
         self.cache = Cache(
-            str(Path(GLib.get_user_cache_dir()) / "kaghez" / "images"),
+            str(Path(GLib.get_user_cache_dir()) / "kaori" / "images"),
             size_limit=CACHE_SIZE_LIMIT,
             eviction_policy="least-recently-used",
         )

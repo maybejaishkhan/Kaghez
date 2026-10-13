@@ -1,5 +1,5 @@
 pkgdatadir = get_option('prefix') / get_option('datadir') / meson.project_name()
-moduledir = pkgdatadir / 'kaghez'
+moduledir = pkgdatadir / 'kaori'
 gnome = import('gnome')
 
 blueprints = files(
@@ -56,8 +56,8 @@ blueprints = custom_target('blueprints',
   ],
 )
 
-gnome.compile_resources('kaghez',
-  'kaghez.gresource.xml',
+gnome.compile_resources('kaori',
+  'kaori.gresource.xml',
   gresource_bundle: true,
   install: true,
   install_dir: pkgdatadir,
@@ -74,22 +74,22 @@ conf.set('localedir', get_option('prefix') / get_option('localedir'))
 conf.set('pkgdatadir', pkgdatadir)
 
 configure_file(
-  input: 'kaghez.in',
-  output: 'kaghez',
+  input: 'kaori.in',
+  output: 'kaori',
   configuration: conf,
   install: true,
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x'
 )
 
-kaghez_sources = [
+kaori_sources = [
   '__init__.py',
   'main.py',
   'actions.py',
   'constants.py'
 ]
 
-install_data(kaghez_sources, install_dir: moduledir)
+install_data(kaori_sources, install_dir: moduledir)
 install_data(
   'Suwayomi-Server-v2.4.2366.jar',
   install_dir: pkgdatadir,

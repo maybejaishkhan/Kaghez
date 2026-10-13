@@ -2,9 +2,9 @@ from gi.repository import Gtk, Adw, Gio, GObject
 
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaghez/download/dialog.ui')
+@Gtk.Template(resource_path='/com/rini/kaori/download/dialog.ui')
 class DownloadDialog(Adw.Dialog):
-    __gtype_name__ = "KaghezDownloadDialog"
+    __gtype_name__ = "KaoriDownloadDialog"
 
     model = GObject.Property(type=models.Manga)
 

@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $KaghezSourcePage : Adw.NavigationPage {
+template $KaoriSourcePage : Adw.NavigationPage {
   child: Adw.BreakpointBin {
     width-request: 10;
     height-request: 10;
@@ -67,7 +67,7 @@ template $KaghezSourcePage : Adw.NavigationPage {
             }
             Gtk.StackPage {
               name: "results";
-              child: $KaghezMangaGrid popular_grid {};
+              child: $KaoriMangaGrid popular_grid {};
             }
             Gtk.StackPage {
               name: "empty";
@@ -104,7 +104,7 @@ template $KaghezSourcePage : Adw.NavigationPage {
             }
             Gtk.StackPage {
               name: "results";
-              child: $KaghezMangaGrid latest_grid {};
+              child: $KaoriMangaGrid latest_grid {};
             }
             Gtk.StackPage {
               name: "empty";
@@ -153,7 +153,7 @@ template $KaghezSourcePage : Adw.NavigationPage {
             }
             Gtk.StackPage {
               name: "results";
-              child: $KaghezMangaGrid search_grid {};
+              child: $KaoriMangaGrid search_grid {};
             }
             Gtk.StackPage {
               name: "empty";

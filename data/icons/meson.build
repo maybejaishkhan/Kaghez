@@ -1,4 +1,4 @@
-application_id = 'com.rini.kaghez'
+application_id = 'com.rini.kaori'
 
 scalable_dir = 'hicolor' / 'scalable' / 'apps'
 install_data(

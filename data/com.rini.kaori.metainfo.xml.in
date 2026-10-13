@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2026 Riyan Parvez -->
 <component type="desktop-application">
-  <id>com.rini.kaghez</id>
+  <id>com.rini.kaori</id>
 
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
@@ -20,7 +20,7 @@
     </p>
   </description>
 
-  <launchable type="desktop-id">com.rini.kaghez.desktop</launchable>
+  <launchable type="desktop-id">com.rini.kaori.desktop</launchable>
 
   <url type="homepage">https://github.com/riyaniii/Kaori</url>
   <url type="vcs-browser">https://github.com/riyaniii/Kaori</url>
@@ -28,7 +28,7 @@
   <url type="contact">https://github.com/riyaniii</url>
   <url type="contribute">https://github.com/riyaniii/Kaori</url>
 
-  <translation type="gettext">kaghez</translation>
+  <translation type="gettext">kaori</translation>
 
   <content_rating type="oars-1.1"/>
 

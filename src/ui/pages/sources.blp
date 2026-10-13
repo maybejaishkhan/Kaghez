@@ -2,7 +2,7 @@ using Gtk 4.0;
 using Adw 1;
 using Gio 2.0;
 
-template $KaghezSourcesPage : Adw.NavigationPage {
+template $KaoriSourcesPage : Adw.NavigationPage {
   title: "Sources";
   tag: "sources";
   map => $on_shown();
@@ -36,21 +36,21 @@ template $KaghezSourcesPage : Adw.NavigationPage {
             model: Gtk.SortListModel {
               sorter: Gtk.MultiSorter {
                 Gtk.StringSorter {
-                  expression: expr item as <$KaghezSource>.lang;
+                  expression: expr item as <$KaoriSource>.lang;
                 }
 
                 Gtk.StringSorter {
-                  expression: expr item as <$KaghezSource>.name;
+                  expression: expr item as <$KaoriSource>.name;
                 }
               };
 
               section-sorter: Gtk.StringSorter {
-                expression: expr item as <$KaghezSource>.lang;
+                expression: expr item as <$KaoriSource>.lang;
               };
 
               model: Gtk.FilterListModel {
                 filter: Gtk.StringFilter {
-                  expression: expr item as <$KaghezSource>.name;
+                  expression: expr item as <$KaoriSource>.name;
                   search: bind template.search_text;
                   match-mode: substring;
                 };

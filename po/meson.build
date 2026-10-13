@@ -1,1 +1,1 @@
-i18n.gettext('kaghez', preset: 'glib')
+i18n.gettext('kaori', preset: 'glib')

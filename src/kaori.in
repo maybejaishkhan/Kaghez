@@ -1,6 +1,6 @@
 #!@PYTHON@
 
-# kaghez.in
+# kaori.in
 #
 # Copyright 2026 riyani
 #
@@ -28,7 +28,7 @@ import gettext
 VERSION = '@VERSION@'
 
 # meson bakes pkgdatadir/localedir in as absolute paths from the BUILD
-# machine (e.g. D:/a/Kaghez/Kaghez/dist/share/kaghez). That's fine for a
+# machine (e.g. D:/a/Kaori/Kaori/dist/share/kaori). That's fine for a
 # normal `meson install` deployment that stays put, but PyInstaller and
 # Inno Setup both relocate the installed tree onto the end user's
 # machine, where the build-time path doesn't exist. So on Windows we
@@ -37,15 +37,15 @@ if getattr(sys, 'frozen', False):
     # Running as a PyInstaller-frozen executable. PyInstaller 6.x puts
     # bundled `datas` under an _internal/ folder next to the exe rather
     # than flat alongside it -- confirmed via CI debug output showing
-    # the gresource lands at <exe_dir>/_internal/share/kaghez/.
+    # the gresource lands at <exe_dir>/_internal/share/kaori/.
     exe_dir = os.path.dirname(sys.executable)
     base_dir = os.path.join(exe_dir, '_internal')
-    pkgdatadir = os.path.join(base_dir, 'share', 'kaghez')
+    pkgdatadir = os.path.join(base_dir, 'share', 'kaori')
     localedir = os.path.join(base_dir, 'share', 'locale')
 
     # NOTE: previously set GI_TYPELIB_PATH manually here pointing at a
     # copied girepository-1.0 folder. Removed to test whether
-    # PyInstaller's `gi` hook (hooksconfig in kaghez.spec) resolves
+    # PyInstaller's `gi` hook (hooksconfig in kaori.spec) resolves
     # typelibs on its own, the way it does in Varia's working build --
     # Varia's workflow never sets this env var or copies typelibs
     # manually. If "Namespace Gtk not available" comes back, this is
@@ -66,14 +66,14 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 # (they're POSIX-only, backed by libintl on Linux/macOS), so guard them
 # the same way Varia does rather than crashing on startup.
 try:
-    locale.bindtextdomain('kaghez', localedir)
-    locale.textdomain('kaghez')
+    locale.bindtextdomain('kaori', localedir)
+    locale.textdomain('kaori')
 except AttributeError:
     print('Cannot set locale.')
 
 try:
-    gettext.bindtextdomain('kaghez', localedir)
-    gettext.textdomain('kaghez')
+    gettext.bindtextdomain('kaori', localedir)
+    gettext.textdomain('kaori')
 except AttributeError:
     print('Cannot load translations.')
 
@@ -81,8 +81,8 @@ if __name__ == '__main__':
     import gi
 
     from gi.repository import Gio
-    resource = Gio.Resource.load(os.path.join(pkgdatadir, 'kaghez.gresource'))
+    resource = Gio.Resource.load(os.path.join(pkgdatadir, 'kaori.gresource'))
     resource._register()
 
-    from kaghez import main
+    from kaori import main
     sys.exit(main.main(VERSION))

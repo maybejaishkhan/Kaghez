@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=com.rini.kaghez
-Exec=@bindir@/kaghez --gapplication-service
