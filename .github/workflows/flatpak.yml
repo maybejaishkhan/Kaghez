@@ -31,22 +31,10 @@ jobs:
             exit 1
           fi
 
-      # The runtime comes from gnome-nightly, but the SDK extensions only
-      # exist on Flathub, so flatpak-builder can't install them itself.
-      # The branch follows the freedesktop SDK the GNOME runtime is built on.
-      - name: Install SDK extensions from Flathub
-        run: |
-          flatpak --system install -y --noninteractive flathub \
-            org.freedesktop.Sdk.Extension.rust-stable//26.08 \
-            org.freedesktop.Sdk.Extension.openjdk21//26.08
-
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: com.rini.kaghez.flatpak
           manifest-path: com.rini.kaghez.json
-          # The manifest targets the GNOME nightly runtime (master).
-          repository-name: gnome-nightly
-          repository-url: https://nightly.gnome.org/gnome-nightly.flatpakrepo
           cache-key: flatpak-builder-${{ hashFiles('com.rini.kaghez.json', 'python3-*.json') }}
 
       - name: Attach to release
