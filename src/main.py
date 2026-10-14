@@ -21,7 +21,7 @@ from .widgets import KaoriWindow, build_shortcuts
 from .widgets.preferences import KaoriPreferences
 from .widgets.setup import SetupWindow
 
-APPLICATION_ID = 'com.rini.kaori'
+APPLICATION_ID = 'io.github.riyaniii.Kaori'
 JAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    'Suwayomi-Server.jar')
 
@@ -54,7 +54,7 @@ class KaoriApplication(Adw.Application):
     def __init__(self, version: str) -> None:
         super().__init__(application_id=APPLICATION_ID,
                          flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
-                         resource_base_path='/com/rini/kaori')
+                         resource_base_path='/io/github/riyaniii/Kaori')
         self.version = version
         self.settings = Gio.Settings(schema_id=APPLICATION_ID)
         self.suwayomi = Suwayomi()

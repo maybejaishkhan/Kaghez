@@ -4,7 +4,7 @@ from gi.repository import Adw, Gio, GLib, GObject, Gtk
 from ..extension import ExtensionCard
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/pages/extensions.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/pages/extensions.ui')
 class ExtensionsPage(Adw.NavigationPage):
     __gtype_name__ = "KaoriExtensionsPage"
 

@@ -5,7 +5,7 @@ from gi.repository import Gtk, Gdk, Gio, GObject, GLib
 
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaori/chapter/row.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/chapter/row.ui')
 class ChapterRow(Gtk.Box):
     __gtype_name__ = "KaoriChapterRow"
 

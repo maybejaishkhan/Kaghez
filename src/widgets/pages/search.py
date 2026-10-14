@@ -5,7 +5,7 @@ from ..containers import MangaRow
 from ...integrations.suwayomi import SourceMangaType
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/pages/search.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/pages/search.ui')
 class SearchPage(Adw.NavigationPage):
     __gtype_name__ = "KaoriSearchPage"
 

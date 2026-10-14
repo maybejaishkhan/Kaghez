@@ -2,7 +2,7 @@
 Name=Kaori
 Comment=A manga reader
 Exec=kaori
-Icon=com.rini.kaori
+Icon=io.github.riyaniii.Kaori
 Terminal=false
 Type=Application
 Categories=Utility;

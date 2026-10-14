@@ -9,7 +9,7 @@ from ...integrations import models
 from ...integrations.suwayomi import SourceMangaType
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/source/page.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/source/page.ui')
 class SourcePage(Adw.NavigationPage):
     __gtype_name__ = "KaoriSourcePage"
 

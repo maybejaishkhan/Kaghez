@@ -1,5 +1,5 @@
 {
-    "id": "com.rini.kaori",
+    "id": "io.github.riyaniii.Kaori",
     "runtime": "org.gnome.Platform",
     "runtime-version": "51",
     "sdk": "org.gnome.Sdk",

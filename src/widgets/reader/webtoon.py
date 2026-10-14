@@ -22,7 +22,7 @@ class TransitionPage(models.Page):
         self.chapter = chapter
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/reader/webtoon.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/reader/webtoon.ui')
 class WebtoonReader(ReaderBase):
     __gtype_name__ = "KaoriWebtoonReader"
 

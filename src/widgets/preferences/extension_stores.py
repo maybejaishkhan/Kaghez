@@ -2,7 +2,7 @@ import asyncio
 from gi.repository import Adw, Gio, Gtk
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/preferences/extension_stores.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/preferences/extension_stores.ui')
 class ExtensionStoresDialog(Adw.Dialog):
     __gtype_name__ = "KaoriExtensionStoresDialog"
 

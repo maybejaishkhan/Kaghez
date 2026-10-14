@@ -1,6 +1,6 @@
 desktop_file = i18n.merge_file(
-        input: 'com.rini.kaori.desktop.in',
-       output: 'com.rini.kaori.desktop',
+        input: 'io.github.riyaniii.Kaori.desktop.in',
+       output: 'io.github.riyaniii.Kaori.desktop',
          type: 'desktop',
        po_dir: '../po',
       install: true,
@@ -13,8 +13,8 @@ if desktop_utils.found()
 endif
 
 appstream_file = i18n.merge_file(
-        input: 'com.rini.kaori.metainfo.xml.in',
-       output: 'com.rini.kaori.metainfo.xml',
+        input: 'io.github.riyaniii.Kaori.metainfo.xml.in',
+       output: 'io.github.riyaniii.Kaori.metainfo.xml',
        po_dir: '../po',
       install: true,
   install_dir: get_option('datadir') / 'metainfo'
@@ -24,7 +24,7 @@ appstreamcli = find_program('appstreamcli', required: false, disabler: true)
 test('Validate appstream file', appstreamcli,
      args: ['validate', '--no-net', '--explain', appstream_file])
 
-install_data('com.rini.kaori.gschema.xml',
+install_data('io.github.riyaniii.Kaori.gschema.xml',
   install_dir: get_option('datadir') / 'glib-2.0' / 'schemas'
 )
 
@@ -37,8 +37,8 @@ test('Validate schema file',
 service_conf = configuration_data()
 service_conf.set('bindir', get_option('prefix') / get_option('bindir'))
 configure_file(
-  input: 'com.rini.kaori.service.in',
-  output: 'com.rini.kaori.service',
+  input: 'io.github.riyaniii.Kaori.service.in',
+  output: 'io.github.riyaniii.Kaori.service',
   configuration: service_conf,
   install_dir: get_option('datadir') / 'dbus-1' / 'services'
 )

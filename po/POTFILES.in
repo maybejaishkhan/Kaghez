@@ -1,8 +1,8 @@
 # List of source files containing translatable strings.
 # Please keep this file sorted alphabetically.
-data/com.rini.kaori.desktop.in
-data/com.rini.kaori.metainfo.xml.in
-data/com.rini.kaori.gschema.xml
+data/io.github.riyaniii.Kaori.desktop.in
+data/io.github.riyaniii.Kaori.metainfo.xml.in
+data/io.github.riyaniii.Kaori.gschema.xml
 src/main.py
 src/window.py
 src/window.ui

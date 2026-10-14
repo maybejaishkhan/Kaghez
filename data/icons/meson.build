@@ -1,4 +1,4 @@
-application_id = 'com.rini.kaori'
+application_id = 'io.github.riyaniii.Kaori'
 
 scalable_dir = 'hicolor' / 'scalable' / 'apps'
 install_data(

@@ -36,7 +36,7 @@ class Reader:
     widget: type
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/reader/page.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/reader/page.ui')
 class ReaderPage(Adw.NavigationPage):
     __gtype_name__ = "KaoriReaderPage"
 

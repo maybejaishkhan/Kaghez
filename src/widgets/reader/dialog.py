@@ -4,7 +4,7 @@ ORIENTATIONS = [Gtk.Orientation.VERTICAL, Gtk.Orientation.HORIZONTAL]
 DIRECTIONS = [Gtk.TextDirection.LTR, Gtk.TextDirection.RTL]
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/reader/dialog.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/reader/dialog.ui')
 class SettingsDialog(Adw.Dialog):
     __gtype_name__ = "KaoriSettingsDialog"
 

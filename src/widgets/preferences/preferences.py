@@ -10,7 +10,7 @@ MODES = (
 )
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/preferences/preferences.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/preferences/preferences.ui')
 class KaoriPreferences(Adw.PreferencesDialog):
     __gtype_name__ = "KaoriPreferencesDialog"
 

@@ -16,7 +16,7 @@ SWIPE_COMMIT_DISTANCE = 40.0
 SWIPE_COMMIT_VELOCITY = 600.0
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/window.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/window.ui')
 class KaoriWindow(Adw.ApplicationWindow):
     __gtype_name__ = 'KaoriWindow'
 

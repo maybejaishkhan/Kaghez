@@ -4,7 +4,7 @@ from gi.repository import Gtk, Adw, Gio, GLib
 from ..manga import MangaCard
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaori/containers/manga_grid.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/containers/manga_grid.ui')
 class MangaGrid(Adw.BreakpointBin):
     __gtype_name__ = 'KaoriMangaGrid'
 

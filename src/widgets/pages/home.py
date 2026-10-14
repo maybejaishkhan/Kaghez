@@ -14,7 +14,7 @@ MAX_CONCURRENT = 3
 CAROUSEL_SIZE = 6
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/pages/home.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/pages/home.ui')
 class HomePage(Adw.NavigationPage):
     __gtype_name__ = "KaoriHomePage"
 

@@ -3,7 +3,7 @@ from gi.repository import Gtk
 from .base import PagedReader
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/reader/single.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/reader/single.ui')
 class SinglePageReader(PagedReader):
     __gtype_name__ = "KaoriSinglePageReader"
 

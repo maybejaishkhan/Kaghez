@@ -1,4 +1,4 @@
-<p align="center"><img src="https://raw.githubusercontent.com/riyaniii/Kaori/7d751cbaec2f1ba443a1cbcbb9cdb132caa8f355/data/icons/hicolor/scalable/apps/com.rini.kaori.svg">
+<p align="center"><img src="data/icons/hicolor/scalable/apps/io.github.riyaniii.Kaori.svg">
 <h1 align="center">Kaori</h1>
 
 Kaori allows you to discover, download and read comics with a beautiful looking UI, and natural touchpad gestures.

@@ -12,7 +12,7 @@ class FilterEntry(GObject.Object):
         self.path = path
 
 
-@Gtk.Template(resource_path='/com/rini/kaori/source/filter.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/source/filter.ui')
 class SourceFilter(Adw.Dialog):
     __gtype_name__ = "KaoriSourceFilter"
 

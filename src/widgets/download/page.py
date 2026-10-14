@@ -3,7 +3,7 @@ from gi.repository import Gtk, Adw, Gio, GLib, Pango
 
 from .row import DownloadRow
 
-@Gtk.Template(resource_path='/com/rini/kaori/download/page.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/download/page.ui')
 class DownloadsPage(Adw.NavigationPage):
     __gtype_name__ = "KaoriDownloadsPage"
 

@@ -2,7 +2,7 @@ from gi.repository import Gtk, Adw, Gio, GObject
 
 from ...integrations import models
 
-@Gtk.Template(resource_path='/com/rini/kaori/manga/card.ui')
+@Gtk.Template(resource_path='/io/github/riyaniii/Kaori/manga/card.ui')
 class MangaCard(Gtk.Box):
     __gtype_name__ = "KaoriMangaCard"
 
