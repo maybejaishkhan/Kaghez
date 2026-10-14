@@ -26,29 +26,29 @@ You can install Kaori as flatpak
 
 ## Screenshots
 
-<img src="https://github.com/user-attachments/assets/985faef7-77a9-4ede-b8e9-c1b8421c54b6" width="100%">
+<img src="assets/Screenshots/home.png" width="100%">
 
 <table>
   <tr>
     <td align="center">
-      <img src="https://github.com/user-attachments/assets/b937ceb0-4049-4733-a778-b565908b44bf" width="100%">
+      <img src="assets/Screenshots/search.png" width="100%">
       <br>
       <strong>Search</strong>
     </td>
     <td align="center">
-      <img src="https://github.com/user-attachments/assets/11405fb5-f572-4c72-b442-2be75cbb2c40" width="100%">
+      <img src="assets/Screenshots/reader.png" width="100%">
       <br>
       <strong>Reader</strong>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="https://github.com/user-attachments/assets/09768716-077c-4f63-80d3-a29f62b5d03b" width="100%">
+      <img src="assets/Screenshots/comic.png" width="100%">
       <br>
       <strong>Comic Details</strong>
     </td>
     <td align="center">
-      <img src="https://github.com/user-attachments/assets/7fa8d539-2b09-499e-a7fc-f95684a4904d" width="100%">
+      <img src="assets/Screenshots/downloads.png" width="100%">
       <br>
       <strong>Downloads</strong>
     </td>
