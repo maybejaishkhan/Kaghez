@@ -147,6 +147,8 @@ jobs:
           LINUXDEPLOY_OUTPUT_VERSION: ${{ github.ref_name }}
         run: |
           export PATH="$HOME/tools:$PATH"
+          JRE="$PWD/AppDir/usr/lib/jre"
+          export LD_LIBRARY_PATH="$JRE/lib/server:$JRE/lib/jli:$JRE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           LIBDIR=/usr/lib/x86_64-linux-gnu
 
           libs=()
