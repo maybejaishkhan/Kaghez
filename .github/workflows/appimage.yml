@@ -1,0 +1,169 @@
+name: AppImage
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+env:
+  APP_ID: io.github.riyaniii.Kaori
+  BIN_NAME: kaori
+  PYVER: "3.12"
+  JRE_MAJOR: "21"
+
+jobs:
+  appimage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Check the server jar
+        run: |
+          jar=$(ls src/Suwayomi-Server-*.jar)
+          size=$(stat -c %s "$jar")
+          echo "$jar: $size bytes"
+          if [ "$size" -lt 1000000 ]; then
+            echo "$jar is a Git LFS pointer, not the real jar" >&2
+            exit 1
+          fi
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            meson ninja-build pkg-config gettext desktop-file-utils \
+            appstream blueprint-compiler patchelf file rsync wget curl xvfb \
+            python3 python3-pip python3-gi python3-gi-cairo \
+            libgtk-4-dev libadwaita-1-dev libgirepository1.0-dev \
+            gir1.2-gtk-4.0 gir1.2-adw-1
+
+      - name: Build and install into AppDir
+        run: |
+          meson setup build --prefix=/usr
+          meson compile -C build
+          DESTDIR="$PWD/AppDir" meson install -C build
+          glib-compile-schemas AppDir/usr/share/glib-2.0/schemas || true
+
+          sed -i "s|'/usr/|os.environ.get('APPDIR', '') + '/usr/|g" "AppDir/usr/bin/$BIN_NAME"
+          echo "--- patched launcher paths:"
+          grep -n "APPDIR" "AppDir/usr/bin/$BIN_NAME" || echo "WARNING: no paths were patched"
+
+      - name: Bundle Python (stdlib, PyGObject, pycairo, pip deps)
+        run: |
+          mkdir -p AppDir/usr/bin AppDir/usr/lib/python3/dist-packages
+
+          cp "/usr/bin/python$PYVER" AppDir/usr/bin/
+          rsync -rL --exclude='__pycache__' --exclude='test' --exclude='tests' \
+            --exclude='idlelib' --exclude='tkinter' --exclude='turtledemo' \
+            --exclude='ensurepip' --exclude='dist-packages' \
+            "/usr/lib/python$PYVER/" "AppDir/usr/lib/python$PYVER/"
+
+          rsync -rL --exclude='__pycache__' /usr/lib/python3/dist-packages/gi \
+            /usr/lib/python3/dist-packages/cairo \
+            AppDir/usr/lib/python3/dist-packages/
+
+          if [ -f requirements.txt ]; then
+            python3 -m pip install --break-system-packages --no-compile \
+              --target AppDir/usr/lib/python3/dist-packages -r requirements.txt
+          else
+            echo "No requirements.txt found - add your pip dependencies here if you have any"
+          fi
+
+          mkdir -p AppDir/usr/lib/girepository-1.0
+          cp /usr/lib/x86_64-linux-gnu/girepository-1.0/*.typelib AppDir/usr/lib/girepository-1.0/
+
+      - name: Bundle Java runtime for the Suwayomi server
+        run: |
+          curl -fsSL "https://api.adoptium.net/v3/binary/latest/${JRE_MAJOR}/ga/linux/x64/jre/hotspot/normal/eclipse" \
+            -o "$RUNNER_TEMP/jre.tar.gz"
+          mkdir -p AppDir/usr/lib/jre
+          tar -xzf "$RUNNER_TEMP/jre.tar.gz" -C AppDir/usr/lib/jre --strip-components=1
+          AppDir/usr/lib/jre/bin/java -version
+
+      - name: Write AppRun
+        run: |
+          cat > "$RUNNER_TEMP/AppRun" <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export APPDIR="${APPDIR:-$HERE}"
+
+          export PYTHONHOME="$APPDIR/usr"
+          export PYTHONPATH="$APPDIR/usr/lib/python3/dist-packages"
+          export PYTHONDONTWRITEBYTECODE=1
+          export GI_TYPELIB_PATH="$APPDIR/usr/lib/girepository-1.0"
+          export LD_LIBRARY_PATH="$APPDIR/usr/lib:$APPDIR/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+          export JAVA_HOME="$APPDIR/usr/lib/jre"
+          export PATH="$JAVA_HOME/bin:$APPDIR/usr/bin:$PATH"
+
+          for hook in "$APPDIR"/apprun-hooks/*.sh; do
+            [ -r "$hook" ] && . "$hook"
+          done
+
+          exec "$APPDIR/usr/bin/python@PYVER@" "$APPDIR/usr/bin/@BIN_NAME@" "$@"
+          EOF
+          sed -i "s|@PYVER@|$PYVER|g; s|@BIN_NAME@|$BIN_NAME|g" "$RUNNER_TEMP/AppRun"
+          chmod +x "$RUNNER_TEMP/AppRun"
+
+      - name: Download linuxdeploy
+        run: |
+          mkdir -p "$HOME/tools"
+          cd "$HOME/tools"
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-gtk.sh
+
+      - name: Build the AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          DEPLOY_GTK_VERSION: "4"
+          LINUXDEPLOY_OUTPUT_VERSION: ${{ github.ref_name }}
+        run: |
+          export PATH="$HOME/tools:$PATH"
+          LIBDIR=/usr/lib/x86_64-linux-gnu
+
+          linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --plugin gtk \
+            --custom-apprun "$RUNNER_TEMP/AppRun" \
+            --executable "AppDir/usr/bin/python$PYVER" \
+            --library "$LIBDIR/libgtk-4.so.1" \
+            --library "$LIBDIR/libadwaita-1.so.0" \
+            --library "$LIBDIR/libgirepository-1.0.so.1" \
+            --deploy-deps-only AppDir/usr/lib/python3/dist-packages/gi \
+            --deploy-deps-only AppDir/usr/lib/python3/dist-packages/cairo \
+            --deploy-deps-only "AppDir/usr/lib/python$PYVER/lib-dynload" \
+            --desktop-file "AppDir/usr/share/applications/$APP_ID.desktop" \
+            --icon-file "AppDir/usr/share/icons/hicolor/scalable/apps/$APP_ID.svg" \
+            --output appimage
+
+          mv ./*.AppImage Kaori-x86_64.AppImage
+          ls -lh Kaori-x86_64.AppImage
+
+      - name: Smoke test
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          GDK_BACKEND: x11
+          GSK_RENDERER: cairo
+        run: |
+          set +e
+          timeout 20 xvfb-run -a ./Kaori-x86_64.AppImage
+          code=$?
+          echo "exit code: $code"
+          [ "$code" -eq 124 ]
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kaori-x86_64.AppImage
+          path: Kaori-x86_64.AppImage
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Kaori-x86_64.AppImage
