@@ -47,7 +47,7 @@ jobs:
       - name: Install build dependencies
         run: |
           apt-get install -y --no-install-recommends \
-            meson ninja-build pkg-config gettext desktop-file-utils \
+            meson ninja-build pkg-config gettext desktop-file-utils dpkg-dev \
             appstream patchelf file rsync xvfb xauth xz-utils \
             python3 python3-pip python3-gi python3-cairo \
             libgtk-4-dev libgtk-4-bin libadwaita-1-dev \
