@@ -48,7 +48,7 @@ jobs:
         run: |
           apt-get install -y --no-install-recommends \
             meson ninja-build pkg-config gettext desktop-file-utils dpkg-dev \
-            appstream patchelf file rsync xvfb xauth xz-utils \
+            appstream patchelf file rsync xvfb xauth xz-utils zsync \
             python3 python3-pip python3-gi python3-cairo \
             libgtk-4-dev libgtk-4-bin libadwaita-1-dev \
             gir1.2-gtk-4.0 gir1.2-adw-1 librsvg2-common shared-mime-info
@@ -91,13 +91,15 @@ jobs:
             /usr/lib/python3/dist-packages/cairo \
             AppDir/usr/lib/python3/dist-packages/
 
+          DEPS=AppDir/usr/lib/python3/dist-packages
           if [ -f requirements.txt ]; then
             python3 -m pip install --break-system-packages --no-compile \
-              --target AppDir/usr/lib/python3/dist-packages -r requirements.txt
-          else
-            python3 -m pip install --break-system-packages --no-compile \
-              --target AppDir/usr/lib/python3/dist-packages "gql[aiohttp,websockets]"
+              --target "$DEPS" -r requirements.txt
           fi
+          python3 -m pip install --break-system-packages --no-compile \
+            --target "$DEPS" httpx "gql[aiohttp,websockets,httpx]"
+
+          PYTHONPATH="$DEPS" python3 -c "import httpx, gql, aiohttp, websockets; print('deps ok')"
 
           mkdir -p AppDir/usr/lib/girepository-1.0
           cp /usr/lib/x86_64-linux-gnu/girepository-1.0/*.typelib AppDir/usr/lib/girepository-1.0/
@@ -177,8 +179,10 @@ jobs:
           wget -q -O "$HOME/tools/appimagetool-x86_64.AppImage" \
             https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x "$HOME/tools/appimagetool-x86_64.AppImage"
-          "$HOME/tools/appimagetool-x86_64.AppImage" --no-appstream AppDir Kaori-x86_64.AppImage
-          ls -lh Kaori-x86_64.AppImage
+          "$HOME/tools/appimagetool-x86_64.AppImage" --no-appstream \
+            -u "gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|Kaori-x86_64.AppImage.zsync" \
+            AppDir Kaori-x86_64.AppImage
+          ls -lh Kaori-x86_64.AppImage*
 
       - name: Smoke test
         env:
@@ -195,10 +199,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Kaori-x86_64.AppImage
-          path: Kaori-x86_64.AppImage
+          path: |
+            Kaori-x86_64.AppImage
+            Kaori-x86_64.AppImage.zsync
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: Kaori-x86_64.AppImage
+          files: |
+            Kaori-x86_64.AppImage
+            Kaori-x86_64.AppImage.zsync
