@@ -5,7 +5,7 @@ from gi.repository import Adw, Gio, GObject, Gtk
 from ..manga import MangaOverview
 from ..containers import MangaRow
 
-from ...integrations.suwayomi import LOCAL_SOURCE_ID
+from ...integrations.suwayomi import LOCAL_SOURCE_ID, watch
 
 MAX_ROWS = 5
 ROW_SIZE = 8
@@ -27,23 +27,25 @@ class HomePage(Adw.NavigationPage):
     def __init__(self):
         super().__init__()
         self.suwayomi = Gio.Application.get_default().suwayomi
+        self.rows = []
+        self.rows_task = None
 
-        library = self.suwayomi.library
-        handler = library.connect("items-changed", self.on_library_changed)
-        self.connect("destroy", lambda *_: library.disconnect(handler))
+        watch(self, self.suwayomi.library, self.on_library_changed)
+        watch(self, self.suwayomi.sources, self.reload_rows)
 
         self.sync_carousel()
         asyncio.create_task(self.load())
 
     async def load(self):
-        _, rows = await asyncio.gather(self.suwayomi.refreshLibrary(), self.load_sources())
-        if not rows and not self.suwayomi.library.get_n_items():
-            self.state = "greeter"
+        await asyncio.gather(self.suwayomi.refreshLibrary(), self.suwayomi.refreshSources())
+        self.reload_rows()
 
-    def on_library_changed(self, *_):
+    def update_state(self):
+        self.state = "home" if self.rows or self.suwayomi.library.get_n_items() else "greeter"
+
+    def on_library_changed(self):
         self.sync_carousel()
-        if self.suwayomi.library.get_n_items():
-            self.state = "home"
+        self.update_state()
 
     def sync_carousel(self):
         while self.manga_carousel.get_n_pages():
@@ -63,22 +65,27 @@ class HomePage(Adw.NavigationPage):
         random.shuffle(picked)
         return picked[:CANDIDATES]
 
-    async def load_sources(self) -> int:
-        await self.suwayomi.refreshSources()
+    def reload_rows(self):
+        if self.rows_task:
+            self.rows_task.cancel()
+        self.rows_task = asyncio.create_task(self.load_rows())
+
+    async def load_rows(self):
+        for row in self.rows:
+            self.main_box.remove(row)
+        self.rows = []
         semaphore = asyncio.Semaphore(MAX_CONCURRENT)
-        rows = 0
 
         async def add_row(source):
-            nonlocal rows
             async with semaphore:
-                if rows >= MAX_ROWS:
+                if len(self.rows) >= MAX_ROWS:
                     return
                 mangas = await self.suwayomi.getSourceManga(source.id)
-            if mangas and rows < MAX_ROWS:
+            if mangas and len(self.rows) < MAX_ROWS:
                 row = MangaRow(source.name)
                 row.set_items(mangas[:ROW_SIZE])
                 self.main_box.append(row)
-                rows += 1
+                self.rows.append(row)
 
         await asyncio.gather(*map(add_row, self.pick_sources()), return_exceptions=True)
-        return rows
+        self.update_state()

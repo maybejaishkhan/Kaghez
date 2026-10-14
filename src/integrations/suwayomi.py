@@ -34,6 +34,7 @@ IMAGE_TIMEOUT = 10
 IMAGE_RETRIES = 1
 CACHE_SIZE_LIMIT = 500 * 1024 * 1024
 GRAPHQL_TIMEOUT = 20
+POLL_INTERVAL = 10
 LOCAL_SOURCE_ID = "0"
 
 READING_MODES = {
@@ -62,6 +63,12 @@ def makeClient(url: str) -> Client:
     return Client(transport=transport, fetch_schema_from_transport=False)
 
 
+def watch(widget, obj: GObject.Object, callback, signal: str = "items-changed"):
+    """Call callback() whenever `obj` emits `signal`, until `widget` is unrealized."""
+    handler = obj.connect(signal, lambda *_: callback())
+    widget.connect("unrealize", lambda *_: obj.disconnect(handler))
+
+
 class Suwayomi(GObject.Object):
     __gtype_name__ = 'KaoriIntegrationSuwayomi'
 
@@ -80,6 +87,7 @@ class Suwayomi(GObject.Object):
         self.pending = {}
         self.closing = set()
         self.session = None
+        self.poller = None
         self.connect_lock = asyncio.Lock()
         self.client = makeClient(self.url)
 
@@ -101,13 +109,14 @@ class Suwayomi(GObject.Object):
         self.download_queue = Gio.ListStore(item_type=models.Download)
         self.library = Gio.ListStore(item_type=models.Manga)
         self.sources = Gio.ListStore(item_type=models.Source)
+        self.all_sources = Gio.ListStore(item_type=models.Source)
         self.extensions = Gio.ListStore(item_type=models.Extension)
 
-        self.all_sources = []
         self.languages = ["en", "all"]
 
     def swapClient(self, url: str) -> Client | None:
         """Install a fresh client; returns the old one if it needs closing."""
+        self.stopPolling()
         old, connected = self.client, self.session is not None
         self.session, self.url, self.client = None, url, makeClient(url)
         return old if connected else None
@@ -123,11 +132,30 @@ class Suwayomi(GObject.Object):
             await old.close_async()
 
     async def close(self):
+        self.stopPolling()
         if self.session is not None:
             await self.client.close_async()
         await asyncio.gather(*self.closing)
         await self.http.aclose()
         self.cache.close()
+
+    def startPolling(self):
+        """Keep the stores in sync with changes made outside the app."""
+        if self.poller is None:
+            self.poller = asyncio.create_task(self.poll())
+
+    def stopPolling(self):
+        if self.poller:
+            self.poller.cancel()
+            self.poller = None
+
+    async def poll(self):
+        while True:
+            await asyncio.sleep(POLL_INTERVAL)
+            await asyncio.gather(
+                self.refreshLibrary(), self.refreshSources(), self.getDownloadStatus(),
+                return_exceptions=True,
+            )
 
     async def getSession(self):
         async with self.connect_lock:
@@ -276,7 +304,10 @@ class Suwayomi(GObject.Object):
 
     async def loadLibrary(self):
         result = await self.query(GET_LIBRARY)
-        self.replace(self.library, self.makeModels(result['mangas']['nodes'], 'Manga'))
+        manga_models = self.makeModels(result['mangas']['nodes'], 'Manga')
+        for model in set(self.library) - set(manga_models):
+            model.in_library = False  # removed from the library elsewhere
+        self.replace(self.library, manga_models)
 
     def syncLibraryMembership(self, model: models.Manga, in_library: bool):
         found, position = self.library.find(model)
@@ -297,7 +328,7 @@ class Suwayomi(GObject.Object):
 
     async def loadSources(self):
         result, _ = await asyncio.gather(self.query(GET_SOURCES), self.getBrowseLanguages())
-        self.all_sources = self.makeModels(result['sources']['nodes'], 'Source')
+        self.replace(self.all_sources, self.makeModels(result['sources']['nodes'], 'Source'))
         self.applyLanguages()
 
     def applyLanguages(self):
@@ -351,6 +382,7 @@ class Suwayomi(GObject.Object):
         model.is_busy = True
         result = await self.query(UPDATE_EXTENSION, {"pkgName": pkg_name, **patch})
         self.makeModel(result['updateExtension']['extension'], 'Extension')
+        await self.refreshSources()  # installing or removing an extension adds or removes sources
         model.is_busy = False
 
     async def installExtension(self, pkg_name: str):
@@ -425,7 +457,10 @@ class Suwayomi(GObject.Object):
     async def getDownloadStatus(self):
         status = (await self.query(GET_DOWNLOAD_STATUS))['downloadStatus']
         self.downloader_state = status['state']
-        self.replace(self.download_queue, [self.makeDownloadModel(item) for item in status['queue']])
+        queue = [self.makeDownloadModel(item) for item in status['queue']]
+        done = {download.manga_id for download in set(self.download_queue) - set(queue)}
+        self.replace(self.download_queue, queue)
+        await asyncio.gather(*(self.getChapters(manga_id) for manga_id in done))  # refresh is_downloaded
 
     async def downloadCommand(self, gql_query, variables=None):
         await self.query(gql_query, variables)
@@ -513,6 +548,7 @@ class Suwayomi(GObject.Object):
 
     async def setExtensionStores(self, urls: list):
         await self.setServerSettings(extensionRepos=urls)
+        await self.refreshExtensions()
 
     def languageTitle(self, lang: str) -> str:
         if lang == "all":
@@ -523,4 +559,3 @@ class Suwayomi(GObject.Object):
             return Locale.parse(lang, sep="-").get_display_name("en")
         except Exception:
             return lang.upper()
-
