@@ -11,8 +11,6 @@ permissions:
 env:
   APP_ID: io.github.riyaniii.Kaori
   BIN_NAME: kaori
-  # Match the Java the Suwayomi jar was built with (your publish workflow uses 25).
-  # A newer runtime can run older bytecode, so 25 is the safe choice.
   JRE_MAJOR: "25"
   BLUEPRINT_TAG: v0.18.0
   DEBIAN_FRONTEND: noninteractive
@@ -20,12 +18,12 @@ env:
 jobs:
   appimage:
     runs-on: ubuntu-24.04
-    # Ubuntu 24.04 ships libadwaita 1.5, but Adw.ViewSwitcherSidebar needs 1.7+.
-    # Build inside a newer distro so the typelibs and libraries are new enough.
     container:
       image: ubuntu:26.04
+    defaults:
+      run:
+        shell: bash
     steps:
-      # Must run before checkout: the bare image has no git or git-lfs.
       - name: Bootstrap
         run: |
           apt-get update
@@ -55,7 +53,6 @@ jobs:
             libgtk-4-dev libgtk-4-bin libadwaita-1-dev \
             gir1.2-gtk-4.0 gir1.2-adw-1 librsvg2-common shared-mime-info
 
-      # Use whatever Python this release ships instead of hardcoding it.
       - name: Detect Python version
         run: |
           pyver=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
@@ -152,7 +149,6 @@ jobs:
           export PATH="$HOME/tools:$PATH"
           LIBDIR=/usr/lib/x86_64-linux-gnu
 
-          # libgirepository is 1.0 or 2.0 depending on the distro, so glob it.
           libs=()
           for lib in "$LIBDIR"/libgtk-4.so.1 "$LIBDIR"/libadwaita-1.so.0 "$LIBDIR"/libgirepository-*.so.*; do
             [ -e "$lib" ] && libs+=(--library "$lib")
