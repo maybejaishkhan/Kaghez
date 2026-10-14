@@ -139,6 +139,7 @@ jobs:
         run: |
           export PATH="$HOME/tools:$PATH"
           LIBDIR=/usr/lib/x86_64-linux-gnu
+          mkdir -p "$LIBDIR/gtk-4.0"
 
           libs=()
           for lib in "$LIBDIR"/libgtk-4.so.1 "$LIBDIR"/libadwaita-1.so.0 "$LIBDIR"/libgirepository-*.so.*; do
