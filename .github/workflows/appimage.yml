@@ -99,14 +99,6 @@ jobs:
           mkdir -p AppDir/usr/lib/girepository-1.0
           cp /usr/lib/x86_64-linux-gnu/girepository-1.0/*.typelib AppDir/usr/lib/girepository-1.0/
 
-      - name: Bundle Java runtime
-        run: |
-          curl -fsSL "https://api.adoptium.net/v3/binary/latest/${JRE_MAJOR}/ga/linux/x64/jre/hotspot/normal/eclipse" \
-            -o "$RUNNER_TEMP/jre.tar.gz"
-          mkdir -p AppDir/usr/lib/jre
-          tar -xzf "$RUNNER_TEMP/jre.tar.gz" -C AppDir/usr/lib/jre --strip-components=1
-          AppDir/usr/lib/jre/bin/java -version
-
       - name: Write AppRun
         run: |
           cat > "$RUNNER_TEMP/AppRun" <<'EOF'
@@ -144,11 +136,8 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           DEPLOY_GTK_VERSION: "4"
-          LINUXDEPLOY_OUTPUT_VERSION: ${{ github.ref_name }}
         run: |
           export PATH="$HOME/tools:$PATH"
-          JRE="$PWD/AppDir/usr/lib/jre"
-          export LD_LIBRARY_PATH="$JRE/lib/server:$JRE/lib/jli:$JRE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           LIBDIR=/usr/lib/x86_64-linux-gnu
 
           libs=()
@@ -166,10 +155,25 @@ jobs:
             --deploy-deps-only AppDir/usr/lib/python3/dist-packages/cairo \
             --deploy-deps-only "AppDir/usr/lib/python$PYVER/lib-dynload" \
             --desktop-file "AppDir/usr/share/applications/$APP_ID.desktop" \
-            --icon-file "AppDir/usr/share/icons/hicolor/scalable/apps/$APP_ID.svg" \
-            --output appimage
+            --icon-file "AppDir/usr/share/icons/hicolor/scalable/apps/$APP_ID.svg"
 
-          mv ./*.AppImage Kaori-x86_64.AppImage
+      - name: Bundle Java runtime
+        run: |
+          curl -fsSL "https://api.adoptium.net/v3/binary/latest/${JRE_MAJOR}/ga/linux/x64/jre/hotspot/normal/eclipse" \
+            -o "$RUNNER_TEMP/jre.tar.gz"
+          mkdir -p AppDir/usr/lib/jre
+          tar -xzf "$RUNNER_TEMP/jre.tar.gz" -C AppDir/usr/lib/jre --strip-components=1
+          AppDir/usr/lib/jre/bin/java -version
+
+      - name: Package the AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          ARCH: x86_64
+        run: |
+          wget -q -O "$HOME/tools/appimagetool-x86_64.AppImage" \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x "$HOME/tools/appimagetool-x86_64.AppImage"
+          "$HOME/tools/appimagetool-x86_64.AppImage" --no-appstream AppDir Kaori-x86_64.AppImage
           ls -lh Kaori-x86_64.AppImage
 
       - name: Smoke test
