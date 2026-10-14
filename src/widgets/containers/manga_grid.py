@@ -10,16 +10,13 @@ class MangaGrid(Adw.BreakpointBin):
 
     grid = Gtk.Template.Child()
 
-    widget = MangaCard
-    model = models.Manga
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.search_text = ""
         self.suwayomi = Gio.Application.get_default().suwayomi
 
-        self.store = Gio.ListStore(item_type=self.model)
+        self.store = Gio.ListStore(item_type=models.Manga)
 
         self.custom_filter = Gtk.CustomFilter.new(self.filter_func)
         self.filter_model = Gtk.FilterListModel(model=self.store, filter=self.custom_filter)
@@ -47,7 +44,7 @@ class MangaGrid(Adw.BreakpointBin):
         self.custom_filter.changed(Gtk.FilterChange.DIFFERENT)
 
     def on_setup(self, factory, list_item):
-        child = self.widget()
+        child = MangaCard()
         child.thumbnail_task = None
         list_item.set_child(child)
 

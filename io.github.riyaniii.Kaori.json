@@ -4,7 +4,6 @@
     "runtime-version": "51",
     "sdk": "org.gnome.Sdk",
     "sdk-extensions": [
-        "org.freedesktop.Sdk.Extension.rust-stable",
         "org.freedesktop.Sdk.Extension.openjdk21"
     ],
     "command": "kaori",
@@ -16,15 +15,6 @@
         "--socket=wayland",
         "--env=PATH=/app/jre/bin:/app/bin:/usr/bin"
     ],
-    "build-options": {
-        "build-args": [
-            "--share=network"
-        ],
-        "append-path": "/usr/lib/sdk/rust-stable/bin",
-        "env": {
-            "CARGO_HOME": "/run/build/glycin-loaders/cargo"
-        }
-    },
     "cleanup": [
         "/include",
         "/lib/pkgconfig",
@@ -40,23 +30,6 @@
         "python3-gql.json",
         "python3-diskcache.json",
         "python3-babel.json",
-        {
-            "name": "glycin-loaders",
-            "buildsystem": "meson",
-            "config-opts": [
-                "-Dloaders=glycin-image-rs",
-                "-Dlibglycin=true",
-                "-Dlibglycin-gtk4=true",
-                "-Dglycin-thumbnailer=false"
-            ],
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://gitlab.gnome.org/GNOME/glycin.git",
-                    "tag": "2.2.0"
-                }
-            ]
-        },
         {
             "name": "openjdk",
             "buildsystem": "simple",

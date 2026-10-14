@@ -1,13 +1,12 @@
 import gi
 gi.require_version('Gdk', '4.0')
-gi.require_version('Gly', '2')
-gi.require_version('GlyGtk4', '2')
-from gi.repository import Gdk, Gio, GLib, GObject, Gly, GlyGtk4
+from gi.repository import Gdk, Gio, GLib, GObject
 
 import asyncio
 import enum
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -29,9 +28,9 @@ MODEL_CLASSES = {
 }
 
 FETCH_CONNECTIONS = 8
-DECODE_WORKERS = max(2, min(4, os.cpu_count() or 2))
 IMAGE_TIMEOUT = 10
 IMAGE_RETRIES = 1
+IMAGE_TTL = 30 * 24 * 60 * 60
 CACHE_SIZE_LIMIT = 500 * 1024 * 1024
 GRAPHQL_TIMEOUT = 20
 POLL_INTERVAL = 10
@@ -64,7 +63,6 @@ def makeClient(url: str) -> Client:
 
 
 def watch(widget, obj: GObject.Object, callback, signal: str = "items-changed"):
-    """Call callback() whenever `obj` emits `signal`, until `widget` is unrealized."""
     handler = obj.connect(signal, lambda *_: callback())
     widget.connect("unrealize", lambda *_: obj.disconnect(handler))
 
@@ -99,12 +97,12 @@ class Suwayomi(GObject.Object):
             timeout=httpx.Timeout(IMAGE_TIMEOUT, pool=None),
             follow_redirects=True,
         )
-        self.decode_slots = asyncio.Semaphore(DECODE_WORKERS)
         self.cache = Cache(
             str(Path(GLib.get_user_cache_dir()) / "kaori" / "images"),
             size_limit=CACHE_SIZE_LIMIT,
             eviction_policy="least-recently-used",
         )
+        self.decoder = ThreadPoolExecutor(max_workers=max(2, min(4, os.cpu_count() or 2)))
 
         self.download_queue = Gio.ListStore(item_type=models.Download)
         self.library = Gio.ListStore(item_type=models.Manga)
@@ -115,7 +113,6 @@ class Suwayomi(GObject.Object):
         self.languages = ["en", "all"]
 
     def swapClient(self, url: str) -> Client | None:
-        """Install a fresh client; returns the old one if it needs closing."""
         self.stopPolling()
         old, connected = self.client, self.session is not None
         self.session, self.url, self.client = None, url, makeClient(url)
@@ -137,10 +134,10 @@ class Suwayomi(GObject.Object):
             await self.client.close_async()
         await asyncio.gather(*self.closing)
         await self.http.aclose()
+        self.decoder.shutdown()
         self.cache.close()
 
     def startPolling(self):
-        """Keep the stores in sync with changes made outside the app."""
         if self.poller is None:
             self.poller = asyncio.create_task(self.poll())
 
@@ -182,25 +179,16 @@ class Suwayomi(GObject.Object):
     async def loadBytes(self, url: str) -> bytes:
         if (data := await asyncio.to_thread(self.cache.get, url)) is None:
             data = (await self.http.get(url)).content
-            await asyncio.to_thread(self.cache.set, url, data)
+            await asyncio.to_thread(self.cache.set, url, data, expire=IMAGE_TTL)
         return data
 
+    @staticmethod
+    def decode(raw: bytes) -> Gdk.Paintable:
+        return Gdk.Texture.new_from_bytes(GLib.Bytes.new(raw))
+
     async def getPaintable(self, url: str) -> Gdk.Paintable:
-        raw_bytes = await self.shared(('bytes', url), lambda: self.loadBytes(url))
-        async with self.decode_slots:
-            return await asyncio.to_thread(self.makeTexture, raw_bytes)
-
-    async def loadIcon(self, item):
-        if item.icon_url:
-            item.paintable = await self.getPaintable(item.icon_url)
-
-    def makeTexture(self, raw_bytes: bytes) -> Gdk.Texture:
-        gbytes = GLib.Bytes.new(raw_bytes)
-        try:
-            return Gdk.Texture.new_from_bytes(gbytes)
-        except GLib.Error:
-            frame = Gly.Loader.new_for_bytes(gbytes).load().next_frame()
-            return GlyGtk4.frame_get_texture(frame)
+        raw = await self.shared(('bytes', url), lambda: self.loadBytes(url))
+        return await asyncio.get_running_loop().run_in_executor(self.decoder, self.decode, raw)
 
     def getModel(self, model_id: int | str, item_type: str) -> GObject.Object | None:
         return self.loaded_models.get((item_type, model_id))
@@ -409,7 +397,6 @@ class Suwayomi(GObject.Object):
         return [self.makePageModel(chapter_id, index, url) for index, url in enumerate(data['pages'])]
 
     async def updateChapter(self, chapter_id: int, **changes):
-        """changes: any of is_read, is_bookmarked, last_page_read."""
         self.getModel(chapter_id, 'Chapter').update_data(**changes)
 
         variables = {"id": chapter_id, **{CHAPTER_VARS[name]: value for name, value in changes.items()}}

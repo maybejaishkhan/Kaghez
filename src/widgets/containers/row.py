@@ -12,8 +12,6 @@ class MangaRow(Gtk.Box):
 
     title = GObject.Property(type=str, default="")
 
-    widget = MangaCard
-
     def __init__(self, title, **kwargs):
         super().__init__(**kwargs)
         self.title = title
@@ -33,24 +31,20 @@ class MangaRow(Gtk.Box):
         self.listview.set_factory(factory)
 
     def on_setup(self, factory, list_item):
-        card = self.widget()
+        card = MangaCard()
         card.thumbnail_task = None
-
-        clamp = Adw.Clamp(orientation=Gtk.Orientation.HORIZONTAL, maximum_size=200)
-        clamp.set_child(card)
-
-        list_item.set_child(clamp)
+        list_item.set_child(card)
 
     def on_bind(self, factory, list_item):
         item = list_item.get_item()
-        card = list_item.get_child().get_child()
+        card = list_item.get_child()
         card.model = item
 
         if item.paintable is None and item.thumbnail_url:
             card.thumbnail_task = asyncio.create_task(self.load_thumbnail(item))
 
     def on_unbind(self, factory, list_item):
-        card = list_item.get_child().get_child()
+        card = list_item.get_child()
         if card.thumbnail_task:
             card.thumbnail_task.cancel()
             card.thumbnail_task = None

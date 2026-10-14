@@ -17,6 +17,10 @@ class ExtensionsPage(Adw.NavigationPage):
         self.extensions = self.suwayomi.extensions
         asyncio.create_task(self.suwayomi.refreshExtensions())
 
+    async def load_icon(self, item):
+        if item.icon_url:
+            item.paintable = await self.suwayomi.getPaintable(item.icon_url)
+
     @Gtk.Template.Callback()
     def on_shown(self, *_):
         asyncio.create_task(self.suwayomi.refreshExtensions())
@@ -34,7 +38,8 @@ class ExtensionsPage(Adw.NavigationPage):
     def on_bind(self, factory, list_item):
         card = list_item.get_child()
         card.model = list_item.get_item()
-        card.icon_task = asyncio.create_task(self.suwayomi.loadIcon(card.model))
+
+        card.icon_task = asyncio.create_task(self.load_icon(card.model))
 
     @Gtk.Template.Callback()
     def on_unbind(self, factory, list_item):
