@@ -97,9 +97,31 @@ jobs:
               --target "$DEPS" -r requirements.txt
           fi
           python3 -m pip install --break-system-packages --no-compile \
-            --target "$DEPS" httpx "gql[aiohttp,websockets,httpx]"
+            --target "$DEPS" httpx babel "gql[aiohttp,websockets,httpx]"
 
-          PYTHONPATH="$DEPS" python3 -c "import httpx, gql, aiohttp, websockets; print('deps ok')"
+          PYTHONPATH="$DEPS" python3 -S - <<'PY'
+          import ast, importlib.util, pathlib, sys
+          root = pathlib.Path("AppDir/usr/share/kaori")
+          local = {p.name for p in root.iterdir()} | {p.stem for p in root.iterdir()}
+          mods = set()
+          for f in root.rglob("*.py"):
+              for n in ast.walk(ast.parse(f.read_text())):
+                  if isinstance(n, ast.Import):
+                      mods.update(a.name.split(".")[0] for a in n.names)
+                  elif isinstance(n, ast.ImportFrom) and n.level == 0 and n.module:
+                      mods.add(n.module.split(".")[0])
+          missing = sorted(
+              m for m in mods
+              if m not in sys.stdlib_module_names
+              and m not in local
+              and importlib.util.find_spec(m) is None
+          )
+          print("third-party imports:", sorted(mods - set(sys.stdlib_module_names) - local))
+          if missing:
+              print("MISSING from bundle:", missing, file=sys.stderr)
+              sys.exit(1)
+          print("deps ok")
+          PY
 
           mkdir -p AppDir/usr/lib/girepository-1.0
           cp /usr/lib/x86_64-linux-gnu/girepository-1.0/*.typelib AppDir/usr/lib/girepository-1.0/
