@@ -13,6 +13,7 @@ env:
   BIN_NAME: kaori
   PYVER: "3.12"
   JRE_MAJOR: "21"
+  BLUEPRINT_TAG: v0.18.0
 
 jobs:
   appimage:
@@ -36,11 +37,19 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            meson ninja-build pkg-config gettext desktop-file-utils \
-            appstream blueprint-compiler patchelf file rsync wget curl xvfb \
+            git meson ninja-build pkg-config gettext desktop-file-utils \
+            appstream patchelf file rsync wget curl xvfb \
             python3 python3-pip python3-gi python3-gi-cairo \
             libgtk-4-dev libadwaita-1-dev libgirepository1.0-dev \
             gir1.2-gtk-4.0 gir1.2-adw-1
+
+      - name: Install blueprint-compiler from source
+        run: |
+          git clone --depth 1 --branch "$BLUEPRINT_TAG" \
+            https://gitlab.gnome.org/GNOME/blueprint-compiler.git "$RUNNER_TEMP/blueprint-compiler"
+          meson setup "$RUNNER_TEMP/bp-build" "$RUNNER_TEMP/blueprint-compiler" --prefix=/usr/local
+          sudo meson install -C "$RUNNER_TEMP/bp-build"
+          blueprint-compiler --version
 
       - name: Build and install into AppDir
         run: |
@@ -48,12 +57,10 @@ jobs:
           meson compile -C build
           DESTDIR="$PWD/AppDir" meson install -C build
           glib-compile-schemas AppDir/usr/share/glib-2.0/schemas || true
-
           sed -i "s|'/usr/|os.environ.get('APPDIR', '') + '/usr/|g" "AppDir/usr/bin/$BIN_NAME"
-          echo "--- patched launcher paths:"
           grep -n "APPDIR" "AppDir/usr/bin/$BIN_NAME" || echo "WARNING: no paths were patched"
 
-      - name: Bundle Python (stdlib, PyGObject, pycairo, pip deps)
+      - name: Bundle Python
         run: |
           mkdir -p AppDir/usr/bin AppDir/usr/lib/python3/dist-packages
 
@@ -70,14 +77,12 @@ jobs:
           if [ -f requirements.txt ]; then
             python3 -m pip install --break-system-packages --no-compile \
               --target AppDir/usr/lib/python3/dist-packages -r requirements.txt
-          else
-            echo "No requirements.txt found - add your pip dependencies here if you have any"
           fi
 
           mkdir -p AppDir/usr/lib/girepository-1.0
           cp /usr/lib/x86_64-linux-gnu/girepository-1.0/*.typelib AppDir/usr/lib/girepository-1.0/
 
-      - name: Bundle Java runtime for the Suwayomi server
+      - name: Bundle Java runtime
         run: |
           curl -fsSL "https://api.adoptium.net/v3/binary/latest/${JRE_MAJOR}/ga/linux/x64/jre/hotspot/normal/eclipse" \
             -o "$RUNNER_TEMP/jre.tar.gz"
