@@ -182,6 +182,14 @@ jobs:
           done
           echo "typelibs:" && find dist/Kaori -iname '*.typelib' | sort
 
+          # The Suwayomi jar must be bundled under the exact name main.py expects.
+          if [ ! -f dist/Kaori/_internal/Suwayomi-Server.jar ]; then
+            echo "ERROR: _internal/Suwayomi-Server.jar missing" >&2
+            find dist/Kaori -iname '*.jar' | sort >&2
+            exit 1
+          fi
+          ls -lh dist/Kaori/_internal/Suwayomi-Server.jar
+
           # Bundle the JRE next to the frozen app so Suwayomi can start.
           mkdir -p dist/Kaori/_internal/jre
           cp -R "$JRE_HOME/." dist/Kaori/_internal/jre/

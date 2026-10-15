@@ -10,6 +10,7 @@
 
 import glob
 import os
+import shutil
 
 from PyInstaller.utils.hooks.gi import get_gi_typelibs
 
@@ -19,7 +20,13 @@ PKGPATH = os.path.join(ROOT, "build", "pypkg")
 gresource = os.environ.get("KAORI_GRESOURCE") or os.path.join(
     ROOT, "build", "src", "kaori.gresource"
 )
-jar = glob.glob(os.path.join(ROOT, "src", "Suwayomi-Server*.jar"))[0]
+
+# main.py expects the server jar to be named exactly "Suwayomi-Server.jar" (the
+# meson install renames it that way). PyInstaller keeps the source basename, so
+# copy the versioned jar to the expected name first.
+_jar_src = glob.glob(os.path.join(ROOT, "src", "Suwayomi-Server*.jar"))[0]
+jar = os.path.join(ROOT, "build", "Suwayomi-Server.jar")
+shutil.copyfile(_jar_src, jar)
 
 # Explicitly collect the GObject-introspection namespaces (typelib + the shared
 # libraries each declares). PyInstaller's automatic GI hooks silently drop Gtk
