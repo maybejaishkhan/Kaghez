@@ -1,7 +1,7 @@
 name: macOS
 
-# macOS CI for Kaori: freeze with PyInstaller and ship a .app + .dmg (arm64)
-# with a bundled Temurin JRE. See CI.md for the running notes.
+# macOS CI for Kaori: freeze with PyInstaller and ship .app + .dmg bundles
+# (arm64 + x86_64) with a bundled Temurin JRE. See CI.md for the running notes.
 
 on:
   workflow_dispatch:
@@ -16,14 +16,28 @@ env:
   HOMEBREW_NO_INSTALL_CLEANUP: "1"
   PYTHONUNBUFFERED: "1"
   JRE_MAJOR: "21"
-  ARCH: arm64
-  JRE_ARCH: aarch64  # Adoptium's name for arm64 macOS; ARCH is only for artifact naming
 
 jobs:
   package:
-    name: Package .app / .dmg (arm64)
-    runs-on: macos-latest
+    name: Package .app / .dmg (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
+    strategy:
+      # One arch failing shouldn't cancel the other.
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest      # Apple Silicon
+            arch: arm64
+            jre_arch: aarch64
+          - runner: macos-15-intel    # Intel (x86_64); last Intel image, EOL ~Aug 2027
+            arch: x86_64
+            jre_arch: x64
+    env:
+      # Adoptium's arch names differ from ours: arm64 -> aarch64, x86_64 -> x64.
+      # ARCH is what we use for artifact/dmg naming.
+      ARCH: ${{ matrix.arch }}
+      JRE_ARCH: ${{ matrix.jre_arch }}
     steps:
       # The Suwayomi jar is stored in Git LFS. Without lfs: true the bundle
       # would ship the ~130 byte pointer file and the local server can't start.
