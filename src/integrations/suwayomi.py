@@ -531,11 +531,17 @@ class Suwayomi(GObject.Object):
         await self.setServerSettings(downloadsPath=path)
 
     async def getExtensionStores(self) -> list:
-        return (await self.getServerSettings())['extensionRepos']
+        result = await self.query(GET_EXTENSION_STORES)
+        return result['extensionStores']['nodes']
 
-    async def setExtensionStores(self, urls: list):
-        await self.setServerSettings(extensionRepos=urls)
-        await self.refreshExtensions()
+    async def addExtensionStore(self, index_url: str) -> dict:
+        result = await self.query(ADD_EXTENSION_STORE, {"indexUrl": index_url})
+        await self.loadExtensions()
+        return result['addExtensionStore']['extensionStore']
+
+    async def removeExtensionStore(self, index_url: str):
+        await self.query(REMOVE_EXTENSION_STORE, {"indexUrl": index_url})
+        await self.loadExtensions()
 
     def languageTitle(self, lang: str) -> str:
         if lang == "all":

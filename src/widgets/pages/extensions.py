@@ -15,14 +15,13 @@ class ExtensionsPage(Adw.NavigationPage):
         super().__init__()
         self.suwayomi = Gio.Application.get_default().suwayomi
         self.extensions = self.suwayomi.extensions
-        asyncio.create_task(self.suwayomi.refreshExtensions())
 
     async def load_icon(self, item):
         if item.icon_url:
             item.paintable = await self.suwayomi.getPaintable(item.icon_url)
 
     @Gtk.Template.Callback()
-    def on_shown(self, *_):
+    def on_shown(self, page):
         asyncio.create_task(self.suwayomi.refreshExtensions())
 
     @Gtk.Template.Callback()

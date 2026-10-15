@@ -56,6 +56,30 @@ query GetLibrary($first: Int, $after: Cursor) {
 }
 """)
 
+GET_EXTENSION_STORES = gql("""
+query GetExtensionStores {
+  extensionStores {
+    nodes { name indexUrl isLegacy }
+  }
+}
+""")
+
+ADD_EXTENSION_STORE = gql("""
+mutation AddExtensionStore($indexUrl: String!) {
+  addExtensionStore(input: { indexUrl: $indexUrl }) {
+    extensionStore { name indexUrl }
+  }
+}
+""")
+
+REMOVE_EXTENSION_STORE = gql("""
+mutation RemoveExtensionStore($indexUrl: String!) {
+  removeExtensionStore(input: { indexUrl: $indexUrl }) {
+    extensionStore { indexUrl }
+  }
+}
+""")
+
 GET_EXTENSIONS = gql("""
 query GetExtensions($first: Int, $after: Cursor) {
   extensions(first: $first, after: $after) {
@@ -336,7 +360,6 @@ query GetServerSettings {
   settings {
     downloadAsCbz
     downloadsPath
-    extensionRepos
   }
 }
 """)
@@ -347,7 +370,6 @@ mutation SetServerSettings($settings: PartialSettingsTypeInput!) {
     settings {
       downloadAsCbz
       downloadsPath
-      extensionRepos
     }
   }
 }
