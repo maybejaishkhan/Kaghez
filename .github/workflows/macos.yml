@@ -1,7 +1,7 @@
 name: macOS
 
 # macOS CI for Kaori: freeze with PyInstaller and ship .app + .dmg bundles
-# (arm64 + x86_64) with a bundled Temurin JRE. See CI.md for the running notes.
+# (arm64 + x86_64) with a bundled JRE. See CI.md for the running notes.
 
 on:
   workflow_dispatch:
@@ -15,7 +15,11 @@ env:
   HOMEBREW_NO_AUTO_UPDATE: "1"
   HOMEBREW_NO_INSTALL_CLEANUP: "1"
   PYTHONUNBUFFERED: "1"
-  JRE_MAJOR: "21"
+  # Match the JRE the upstream Suwayomi macOS bundle ships (Azul Zulu 25, per
+  # scripts/bundler.sh). Running the server on Java 21 on macOS made its GraphQL
+  # class-scanner come up empty ("InvalidPackagesException").
+  JRE_ZULU_BUILD: "25.36.205"
+  JRE_ZULU_JAVA: "25.0.4.1"
 
 jobs:
   package:
@@ -29,15 +33,14 @@ jobs:
         include:
           - runner: macos-latest      # Apple Silicon
             arch: arm64
-            jre_arch: aarch64
+            jre_platform: macosx_aarch64
           - runner: macos-15-intel    # Intel (x86_64); last Intel image, EOL ~Aug 2027
             arch: x86_64
-            jre_arch: x64
+            jre_platform: macosx_x64
     env:
-      # Adoptium's arch names differ from ours: arm64 -> aarch64, x86_64 -> x64.
-      # ARCH is what we use for artifact/dmg naming.
+      # ARCH is what we use for artifact/dmg naming; JRE_PLATFORM is Zulu's name.
       ARCH: ${{ matrix.arch }}
-      JRE_ARCH: ${{ matrix.jre_arch }}
+      JRE_PLATFORM: ${{ matrix.jre_platform }}
     steps:
       # The Suwayomi jar is stored in Git LFS. Without lfs: true the bundle
       # would ship the ~130 byte pointer file and the local server can't start.
@@ -139,11 +142,12 @@ jobs:
 
       - name: Fetch the JRE and app icon
         run: |
-          curl -fsSL \
-            "https://api.adoptium.net/v3/binary/latest/${JRE_MAJOR}/ga/mac/${JRE_ARCH}/jre/hotspot/normal/eclipse" \
-            -o "$RUNNER_TEMP/jre.tar.gz"
+          # Azul Zulu JRE 25 for macOS -- the same runtime the upstream Suwayomi
+          # macOS bundle ships.
+          jre_zip="zulu${JRE_ZULU_BUILD}-ca-jre${JRE_ZULU_JAVA}-${JRE_PLATFORM}.zip"
+          curl -fsSL "https://cdn.azul.com/zulu/bin/${jre_zip}" -o "$RUNNER_TEMP/$jre_zip"
           mkdir -p "$RUNNER_TEMP/jre"
-          tar -xzf "$RUNNER_TEMP/jre.tar.gz" -C "$RUNNER_TEMP/jre"
+          unzip -q "$RUNNER_TEMP/$jre_zip" -d "$RUNNER_TEMP/jre"
           home=$(find "$RUNNER_TEMP/jre" -type d -path '*/Contents/Home' | head -1)
           echo "JRE_HOME=$home" >> "$GITHUB_ENV"
           "$home/bin/java" -version
@@ -207,8 +211,8 @@ jobs:
           sed "s/@VERSION@/$KAORI_VERSION/g" mac/Info.plist > "$app/Contents/Info.plist"
           plutil -lint "$app/Contents/Info.plist"
 
-          # Sign PyInstaller's binaries, but leave the bundled Temurin JRE alone:
-          # Adoptium already signs it with the JVM entitlements, and re-signing it
+          # Sign PyInstaller's binaries, but leave the bundled JRE alone:
+          # Azul already signs it with the JVM entitlements, and re-signing it
           # ad-hoc strips those and can stop `java` from running.
           find "$app" -type f -not -path "*/jre/*" \
             -exec sh -c 'file "$1" | grep -q "Mach-O" && codesign -f -s - "$1"' _ {} \; 2>/dev/null || true
