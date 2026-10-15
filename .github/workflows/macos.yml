@@ -41,12 +41,14 @@ jobs:
             exit 1
           fi
 
+      # desktop-file-utils provides update-desktop-database, which the
+      # meson post-install hook runs during `meson install`.
       - name: Install build dependencies
         run: |
           brew install \
             gtk4 libadwaita pygobject3 \
             blueprint-compiler meson ninja \
-            gettext pkg-config
+            gettext pkg-config desktop-file-utils
 
       # gettext is keg-only, so msgfmt (needed by the i18n.gettext module)
       # is not on PATH until we add it explicitly.
