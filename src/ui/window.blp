@@ -1,5 +1,6 @@
 using Gtk 4.0;
 using Adw 1;
+using Gio 2.0;
 
 template $KaoriWindow : Adw.ApplicationWindow {
   width-request: 1100;
@@ -105,6 +106,7 @@ template $KaoriWindow : Adw.ApplicationWindow {
                 name: "downloads";
                 title: "Downloads";
                 icon-name: "folder-download-symbolic";
+                badge-number: bind (template.downloads as <Gio.ListStore>).n-items;
                 child: Adw.NavigationView downloads_nav_view {
                   Adw.NavigationPage {
                     title: "Downloads";

@@ -1,4 +1,4 @@
-from gi.repository import Gtk, Adw, GLib, Gdk, Pango, GObject
+from gi.repository import Gtk, Adw, Gio, GLib, Gdk, Pango, GObject
 
 import asyncio
 
@@ -21,6 +21,7 @@ class KaoriWindow(Adw.ApplicationWindow):
     __gtype_name__ = 'KaoriWindow'
 
     name = GObject.Property(type=str)
+    downloads = GObject.Property(type=Gio.ListStore)
 
     main_stack = Gtk.Template.Child()
     overlay_split_view = Gtk.Template.Child()
@@ -33,6 +34,7 @@ class KaoriWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = NAME
+        self.downloads = Gio.Application.get_default().suwayomi.download_queue
         list(list(list(list(list(list(self.header_bar)[0])[0])[1])[0])[0])[0].set_ellipsize(Pango.EllipsizeMode.NONE)
 
         self.create_action(actions.show_manga, parameter_type="i")
