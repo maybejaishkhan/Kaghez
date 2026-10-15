@@ -63,7 +63,8 @@ jobs:
             gtk4 libadwaita pygobject3 \
             blueprint-compiler meson ninja \
             gettext pkg-config librsvg \
-            adwaita-icon-theme gsettings-desktop-schemas
+            adwaita-icon-theme gsettings-desktop-schemas \
+            gobject-introspection
           echo "$(brew --prefix gettext)/bin" >> "$GITHUB_PATH"
           gi_path="$(brew --prefix libadwaita)/lib/girepository-1.0:$(brew --prefix gtk4)/lib/girepository-1.0"
           echo "GI_TYPELIB_PATH=$gi_path" >> "$GITHUB_ENV"
@@ -165,6 +166,17 @@ jobs:
           python3 -m PyInstaller --clean --noconfirm \
             --workpath build/pyinstaller --distpath dist mac/kaori.spec
           rm -rf build/pypkg
+
+          # Fail loudly if Gtk/Adw typelibs did not make it into the bundle.
+          # Missing them is the cause of "Namespace Gtk not available" at launch.
+          for tl in Gtk-4.0.typelib Adw-1.typelib; do
+            if ! find dist/Kaori -iname "$tl" | grep -q .; then
+              echo "ERROR: $tl missing from the bundle" >&2
+              find dist/Kaori -iname '*.typelib' | sort >&2
+              exit 1
+            fi
+          done
+          echo "typelibs:" && find dist/Kaori -iname '*.typelib' | sort
 
           # Bundle the JRE next to the frozen app so Suwayomi can start.
           mkdir -p dist/Kaori/_internal/jre

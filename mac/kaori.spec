@@ -11,6 +11,8 @@
 import glob
 import os
 
+from PyInstaller.utils.hooks.gi import get_gi_typelibs
+
 ROOT = os.environ["KAORI_ROOT"]
 PKGPATH = os.path.join(ROOT, "build", "pypkg")
 
@@ -19,18 +21,41 @@ gresource = os.environ.get("KAORI_GRESOURCE") or os.path.join(
 )
 jar = glob.glob(os.path.join(ROOT, "src", "Suwayomi-Server*.jar"))[0]
 
+# Explicitly collect the GObject-introspection namespaces (typelib + the shared
+# libraries each declares). PyInstaller's automatic GI hooks silently drop Gtk
+# and Adw on macOS (their typelibs need a share/gir-1.0/*.gir that Homebrew does
+# not ship), which makes the frozen app die at startup with
+# "Namespace Gtk not available".
+binaries, gi_datas, hiddenimports = [], [], []
+for ns, ver in [
+    ("GLib", "2.0"), ("GObject", "2.0"), ("Gio", "2.0"), ("GModule", "2.0"),
+    ("cairo", "1.0"), ("HarfBuzz", "0.0"), ("Graphene", "1.0"),
+    ("Pango", "1.0"), ("PangoCairo", "1.0"), ("GdkPixbuf", "2.0"),
+    ("Gdk", "4.0"), ("Gsk", "4.0"), ("Gtk", "4.0"), ("Adw", "1"),
+]:
+    try:
+        b, d, h = get_gi_typelibs(ns, ver)
+        binaries += b
+        gi_datas += d
+        hiddenimports += h
+    except Exception as exc:  # keep building; the workflow verifies Gtk landed
+        print(f"WARN: could not collect GI namespace {ns}-{ver}: {exc}")
+
+# gi + the cairo foreign-struct converter that GTK needs under Python.
+hiddenimports += ["gi", "cairo", "gi._gi_cairo"]
+
 a = Analysis(
     [os.path.join(ROOT, "mac", "entry.py")],
     pathex=[PKGPATH],
-    binaries=[],
-    datas=[
+    binaries=binaries,
+    datas=gi_datas + [
         (gresource, "share/kaori"),
         (os.path.join(ROOT, "build", "version"), "share/kaori"),
         (os.path.join(ROOT, "build", "schemas"), "share/glib-2.0/schemas"),
         (os.path.join(ROOT, "build", "locale"), "share/locale"),
         (jar, "."),
     ],
-    hiddenimports=["gi"],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={
         "gi": {

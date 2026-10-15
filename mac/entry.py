@@ -3,11 +3,12 @@
 Mirrors src/kaori.in's frozen-executable behaviour, but as a committed script
 PyInstaller can analyse. It:
 
-  1. points PATH/JAVA_HOME at the bundled Temurin JRE (so Suwayomi starts
+  1. points GI_TYPELIB_PATH at the bundled typelibs (so gi can resolve Gtk/Adw),
+  2. points PATH/JAVA_HOME at the bundled Temurin JRE (so Suwayomi starts
      without a system Java),
-  2. points GSETTINGS_SCHEMA_DIR at the bundled schema,
-  3. registers the bundled gresource,
-  4. hands off to kaori.main.
+  3. points GSETTINGS_SCHEMA_DIR at the bundled schema,
+  4. registers the bundled gresource,
+  5. hands off to kaori.main.
 
 Data layout inside the frozen bundle (PyInstaller 6 onedir):
 
@@ -17,6 +18,7 @@ Data layout inside the frozen bundle (PyInstaller 6 onedir):
     share/kaori/version
     share/glib-2.0/schemas/
     share/locale/<lang>/LC_MESSAGES/kaori.mo
+    girepository-1.0/*.typelib
     jre/bin/java
     Suwayomi-Server.jar               <- matches main.py's JAR path derivation
 """
@@ -27,6 +29,27 @@ import os
 import signal
 import sys
 
+
+def frozen_base() -> str:
+    # In a PyInstaller onedir build this is the _internal/ dir next to the exe.
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _prepend_env(name: str, value: str) -> None:
+    existing = os.environ.get(name, "")
+    os.environ[name] = value + (os.pathsep + existing if existing else "")
+
+
+# PyInstaller's `gi` runtime hook points GI_TYPELIB_PATH at its bundled
+# gi_typelibs/. Also add a girepository-1.0/ dir if one was copied in by hand
+# (defensive fallback -- without resolvable typelibs the app dies at the
+# `gi.require_version` calls below with "Namespace Gtk not available").
+_typelib_dir = os.path.join(frozen_base(), "girepository-1.0")
+if os.path.isdir(_typelib_dir):
+    _prepend_env("GI_TYPELIB_PATH", _typelib_dir)
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -34,11 +57,6 @@ gi.require_version("Adw", "1")
 from gi.repository import Gio
 
 APPLICATION_ID = "io.github.riyaniii.Kaori"
-
-
-def frozen_base() -> str:
-    # PyInstaller 6.x puts bundled data under _internal/ next to the exe.
-    return os.path.join(os.path.dirname(sys.executable), "_internal")
 
 
 def read_version(pkgdatadir: str) -> str:
@@ -59,7 +77,7 @@ def main() -> int:
     # Prefer the bundled JRE so the Suwayomi server can be started out of the box.
     if os.path.isdir(jre_bin):
         os.environ["JAVA_HOME"] = os.path.dirname(jre_bin)
-        os.environ["PATH"] = jre_bin + os.pathsep + os.environ.get("PATH", "")
+        _prepend_env("PATH", jre_bin)
 
     if os.path.isdir(schemadir):
         os.environ["GSETTINGS_SCHEMA_DIR"] = schemadir
