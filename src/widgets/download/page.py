@@ -21,11 +21,9 @@ class DownloadsPage(Adw.NavigationPage):
         self.suwayomi.bind_property(
             "downloader-state", self, "downloader-state", GObject.BindingFlags.SYNC_CREATE,
         )
-
-    @Gtk.Template.Callback()
-    def on_map(self, *_):
         asyncio.create_task(self.refresh())
         self.poll_id = GLib.timeout_add_seconds(1, self.on_poll)
+
 
     def on_poll(self):
         asyncio.create_task(self.refresh())
