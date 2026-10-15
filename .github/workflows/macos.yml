@@ -66,8 +66,12 @@ jobs:
             adwaita-icon-theme gsettings-desktop-schemas \
             gobject-introspection
           echo "$(brew --prefix gettext)/bin" >> "$GITHUB_PATH"
-          gi_path="$(brew --prefix libadwaita)/lib/girepository-1.0:$(brew --prefix gtk4)/lib/girepository-1.0"
-          echo "GI_TYPELIB_PATH=$gi_path" >> "$GITHUB_ENV"
+          # NOTE: do NOT export GI_TYPELIB_PATH here. PyInstaller's macOS typelib
+          # collector derives the share/gir-1.0 dir from the *typelib path*; a
+          # keg-path (brew --prefix gtk4/...) makes it look in
+          # /opt/homebrew/opt/share/gir-1.0 and drop Gtk/Adw with "Unable to find
+          # gir directory". The default search path (/opt/homebrew/lib/...) works.
+          #
           # `gi` itself comes from Homebrew's pygobject3, so it isn't pip-installed
           # here. --ignore-installed makes pip lay down fresh copies instead of
           # trying to uninstall brew-owned packages (e.g. typing_extensions has no
