@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from gi.repository import Gtk, Gdk, Gio, GObject, GLib
+from gi.repository import Gtk, Adw, Gdk, Gio, GObject
 
 from ...integrations import models
 
@@ -42,6 +42,11 @@ class ChapterRow(Gtk.Box):
 
     def set_action_enabled(self, name, enabled):
         self.actions.lookup_action(name).set_enabled(enabled)
+
+    def show_toast(self, message):
+        overlay = self.get_root().toast_overlay
+        overlay.dismiss_all()
+        overlay.add_toast(Adw.Toast(title=message, timeout=1, use_markup=False))
 
     def open_menu(self, x, y):
         chapter = self.model
@@ -97,7 +102,17 @@ class ChapterRow(Gtk.Box):
         asyncio.create_task(self.suwayomi.updateChapter(self.model.id, is_read=False))
 
     def on_download(self, *args):
-        self.activate_action("app.download_chapter", GLib.Variant("i", self.model.id))
+        asyncio.create_task(self.download())
 
     def on_delete_download(self, *args):
-        self.activate_action("app.delete_chapter_download", GLib.Variant("i", self.model.id))
+        asyncio.create_task(self.delete_download())
+
+    async def download(self):
+        chapter = self.model
+        await self.suwayomi.enqueueChapterDownload(chapter.id)
+        self.show_toast(f"Downloading {chapter.name}")
+
+    async def delete_download(self):
+        chapter = self.model
+        await self.suwayomi.deleteDownloadedChapter(chapter.id)
+        self.show_toast(f"Deleted download of {chapter.name}")

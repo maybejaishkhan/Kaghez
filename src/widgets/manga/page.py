@@ -88,6 +88,23 @@ class MangaPage(Adw.NavigationPage):
         self.model = model
         self.suwayomi = Gio.Application.get_default().suwayomi
 
+        self.actions = Gio.SimpleActionGroup()
+        self.insert_action_group("manga", self.actions)
+
+        self.add_manga_action("read", self.on_read)
+        self.add_manga_action("toggle_library", self.on_toggle_library)
+        self.add_manga_action("download", self.on_download, GLib.VariantType.new("s"))
+
+    def add_manga_action(self, name, callback, param_type=None):
+        action = Gio.SimpleAction.new(name, param_type)
+        action.connect("activate", callback)
+        self.actions.add_action(action)
+
+    def show_toast(self, message):
+        overlay = self.get_root().toast_overlay
+        overlay.dismiss_all()
+        overlay.add_toast(Adw.Toast(title=message, timeout=1, use_markup=False))
+
     @Gtk.Template.Callback()
     def on_shown(self, *_):
         if self.model.initialized:
@@ -105,6 +122,49 @@ class MangaPage(Adw.NavigationPage):
 
     def refresh_chapter_panel(self):
         self.activate_action("app.set_chapters", GLib.Variant("i", self.model.id))
+
+    def on_read(self, *_):
+        if not self.model.last_read_chapter:
+            return
+        self.activate_action(
+            "app.show_reader",
+            GLib.Variant("(ii)", (self.model.id, self.model.last_read_chapter.id))
+        )
+
+    def on_toggle_library(self, *_):
+        asyncio.create_task(self.toggle_library())
+
+    def on_download(self, action, param):
+        asyncio.create_task(self.download_chapters(int(param.get_string())))
+
+    async def toggle_library(self):
+        model = self.model
+        was_in_library = model.in_library
+
+        await self.suwayomi.setMangaLibrary(model.id, not was_in_library)
+
+        verb = "removed from" if was_in_library else "added to"
+        self.show_toast(f"{model.title} {verb} library")
+
+    async def download_chapters(self, count):
+        pending = [
+            chapter for chapter in sorted(self.model.chapters, key=lambda c: c.source_order)
+            if not chapter.is_downloaded
+        ]
+        if count != 0:
+            pending = [chapter for chapter in pending if not chapter.is_read]
+        if count > 0:
+            pending = pending[:count]
+
+        if not pending:
+            self.show_toast("Nothing to download")
+            return
+
+        for chapter in pending:
+            await self.suwayomi.enqueueChapterDownload(chapter.id)
+
+        noun = "chapter" if len(pending) == 1 else "chapters"
+        self.show_toast(f"Downloading {len(pending)} {noun}")
 
     @Gtk.Template.Callback()
     def populate_genres(self, obj, genre):
@@ -129,19 +189,6 @@ class MangaPage(Adw.NavigationPage):
     @Gtk.Template.Callback()
     def get_library_button_tooltip(self, obj, in_library):
         return "Remove from library" if in_library else "Add to library"
-
-    @Gtk.Template.Callback()
-    def on_read_clicked(self, *_):
-        if not self.model.last_read_chapter:
-            return
-        self.activate_action(
-            "app.show_reader",
-            GLib.Variant("(ii)", (self.model.id, self.model.last_read_chapter.id))
-        )
-
-    @Gtk.Template.Callback()
-    def on_library_button_clicked(self, *_):
-        self.activate_action("app.toggle_library", GLib.Variant("i", self.model.id))
 
     @Gtk.Template.Callback()
     def get_description(self, obj, description):

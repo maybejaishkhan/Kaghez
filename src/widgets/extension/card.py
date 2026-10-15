@@ -1,4 +1,6 @@
-from gi.repository import Gtk, GLib, Gio, GObject
+import asyncio
+
+from gi.repository import Gtk, Gio, GObject
 
 from ...integrations import models
 
@@ -10,6 +12,30 @@ class ExtensionCard(Gtk.Box):
 
     def __init__(self):
         super().__init__()
+        self.suwayomi = Gio.Application.get_default().suwayomi
+
+        self.actions = Gio.SimpleActionGroup()
+        self.insert_action_group("extension", self.actions)
+
+        self.add_extension_action("apply", self.on_apply)
+
+    def add_extension_action(self, name, callback, param_type=None):
+        action = Gio.SimpleAction.new(name, param_type)
+        action.connect("activate", callback)
+        self.actions.add_action(action)
+
+    def on_apply(self, *_):
+        asyncio.create_task(self.apply())
+
+    async def apply(self):
+        model = self.model
+
+        if model.has_update:
+            await self.suwayomi.updateExtension(model.pkg_name)
+        elif model.is_installed:
+            await self.suwayomi.uninstallExtension(model.pkg_name)
+        else:
+            await self.suwayomi.installExtension(model.pkg_name)
 
     @Gtk.Template.Callback()
     def get_action_button_tooltip(self, obj, is_installed, has_update):
@@ -32,7 +58,3 @@ class ExtensionCard(Gtk.Box):
     @Gtk.Template.Callback()
     def get_not(self, obj, value):
         return not value
-
-    @Gtk.Template.Callback()
-    def on_button_clicked(self, *_):
-        self.activate_action("app.extension_action", GLib.Variant("s", self.model.pkg_name))

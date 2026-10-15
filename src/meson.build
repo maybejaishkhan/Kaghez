@@ -32,7 +32,6 @@ blueprints = files(
 
   'ui/download/row.blp',
   'ui/download/page.blp',
-  'ui/download/dialog.blp',
 
   'ui/containers/manga_grid.blp',
   'ui/containers/row.blp',

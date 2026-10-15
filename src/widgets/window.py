@@ -52,12 +52,6 @@ class KaoriWindow(Adw.ApplicationWindow):
         self.create_action(actions.open_downloads_page, ['<control>j'], parameter_type=None)
         self.create_action(actions.open_library_page, ['<control>l'], parameter_type=None)
 
-        self.create_action(actions.extension_action)
-        self.create_action(actions.toggle_library, parameter_type="i")
-
-        self.create_action(actions.download_chapter, parameter_type="i")
-        self.create_action(actions.delete_chapter_download, parameter_type="i")
-
         scroll_controller = Gtk.EventControllerScroll(
             flags=Gtk.EventControllerScrollFlags.HORIZONTAL
         )
@@ -121,4 +115,3 @@ class KaoriWindow(Adw.ApplicationWindow):
                 return
 
         self.swipe_accum = 0.0
-

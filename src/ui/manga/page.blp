@@ -141,22 +141,29 @@ template $KaoriMangaPage : Adw.NavigationPage {
             styles [
               "linked"
             ]
-
             Gtk.Button read {
               styles [
                 "suggested-action"
               ]
               label: bind $get_read_button_label(template.model as <$KaoriManga> .first_unread_chapter) as <string>;
-              clicked => $on_read_clicked();
+              action-name: "manga.read";
             }
+
             Gtk.Button chapters {
               label: "Chapters";
               action-name: "app.toggle_chapter_panel";
             }
+
             Gtk.Button library {
               icon-name: bind $get_library_icon_name(template.model as <$KaoriManga> .in_library) as <string>;
               tooltip-text: bind $get_library_button_tooltip(template.model as <$KaoriManga> .in_library) as <string>;
-              clicked => $on_library_button_clicked();
+              action-name: "manga.toggle_library";
+            }
+
+            Gtk.MenuButton download {
+              icon-name: "folder-download-symbolic";
+              tooltip-text: "Download to your device";
+              menu-model: download_menu;
             }
           }
 
@@ -189,4 +196,39 @@ template $KaoriMangaPage : Adw.NavigationPage {
       };
     };
   };
+}
+
+menu download_menu {
+  section {
+    item {
+      label: "Next";
+      action: "manga.download";
+      target: "1";
+    }
+    item {
+      label: "Next 5";
+      action: "manga.download";
+      target: "5";
+    }
+    item {
+      label: "Next 10";
+      action: "manga.download";
+      target: "10";
+    }
+    item {
+      label: "Next 25";
+      action: "manga.download";
+      target: "25";
+    }
+    item {
+      label: "Unread";
+      action: "manga.download";
+      target: "-1";
+    }
+    item {
+      label: "All";
+      action: "manga.download";
+      target: "0";
+    }
+  }
 }

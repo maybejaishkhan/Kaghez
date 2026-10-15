@@ -36,15 +36,15 @@ template $KaoriExtensionCard : Gtk.Box {
     }
   }
 
-    Gtk.Button action_button {
-      valign: center;
-      styles [
-        "flat",
-        "circular"
-      ]
-      sensitive: bind $get_not(template.model as <$KaoriExtension> .is_busy) as <bool>;
-      tooltip-text: bind $get_action_button_tooltip(template.model as <$KaoriExtension> .is_installed, template.model as <$KaoriExtension> .has_update) as <string>;
-      icon-name: bind $get_action_button_icon_name(template.model as <$KaoriExtension> .is_installed, template.model as <$KaoriExtension> .has_update) as <string>;
-      clicked => $on_button_clicked();
-    }
+  Gtk.Button action_button {
+    valign: center;
+    styles [
+      "flat",
+      "circular"
+    ]
+    sensitive: bind $get_not(template.model as <$KaoriExtension> .is_busy) as <bool>;
+    tooltip-text: bind $get_action_button_tooltip(template.model as <$KaoriExtension> .is_installed, template.model as <$KaoriExtension> .has_update) as <string>;
+    icon-name: bind $get_action_button_icon_name(template.model as <$KaoriExtension> .is_installed, template.model as <$KaoriExtension> .has_update) as <string>;
+    action-name: "extension.apply";
+  }
 }

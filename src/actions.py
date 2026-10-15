@@ -75,37 +75,3 @@ async def show_source(app, source_id: str):
 async def show_manga(app, manga_id: int):
     model = app.suwayomi.getModel(manga_id, 'Manga')
     show_page(app, Widgets.manga.MangaPage(model))
-
-
-async def extension_action(app, pkg_name: str):
-    suwayomi = app.suwayomi
-    model = suwayomi.getModel(pkg_name, 'Extension')
-
-    if model.has_update:
-        await suwayomi.updateExtension(model.pkg_name)
-    elif model.is_installed:
-        await suwayomi.uninstallExtension(model.pkg_name)
-    else:
-        await suwayomi.installExtension(model.pkg_name)
-
-
-async def toggle_library(app, manga_id: int):
-    model = app.suwayomi.getModel(manga_id, 'Manga')
-    was_in_library = model.in_library
-
-    await app.suwayomi.setMangaLibrary(model.id, not was_in_library)
-
-    verb = "removed from" if was_in_library else "added to"
-    show_toast(app, f"{model.title} {verb} library")
-
-
-async def download_chapter(app, chapter_id: int):
-    model = app.suwayomi.getModel(chapter_id, 'Chapter')
-    await app.suwayomi.enqueueChapterDownload(chapter_id)
-    show_toast(app, f"Downloading {model.name}")
-
-
-async def delete_chapter_download(app, chapter_id: int):
-    model = app.suwayomi.getModel(chapter_id, 'Chapter')
-    await app.suwayomi.deleteDownloadedChapter(chapter_id)
-    show_toast(app, f"Deleted download of {model.name}")
