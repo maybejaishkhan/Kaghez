@@ -85,17 +85,18 @@ def main() -> int:
     sys.path.insert(1, pkgdatadir)
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    try:
+    # locale.bindtextdomain() needs libintl and is missing from some macOS Python
+    # builds; gettext's binding below still localises our own strings, so this is
+    # informational only (not the cause of any startup failure).
+    if hasattr(locale, "bindtextdomain"):
         locale.bindtextdomain("kaori", localedir)
         locale.textdomain("kaori")
-    except AttributeError:
-        print("Cannot set locale.")
 
     try:
         gettext.bindtextdomain("kaori", localedir)
         gettext.textdomain("kaori")
     except AttributeError:
-        print("Cannot load translations.")
+        print("Translations unavailable.", file=sys.stderr)
 
     resource = Gio.Resource.load(os.path.join(pkgdatadir, "kaori.gresource"))
     resource._register()

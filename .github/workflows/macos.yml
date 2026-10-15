@@ -199,10 +199,15 @@ jobs:
           sed "s/@VERSION@/$KAORI_VERSION/g" mac/Info.plist > "$app/Contents/Info.plist"
           plutil -lint "$app/Contents/Info.plist"
 
-          # Ad-hoc sign every Mach-O file, then the bundle itself.
-          find "$app" -type f -exec sh -c 'file "$1" | grep -q "Mach-O" && codesign -f -s - "$1"' _ {} \; 2>/dev/null || true
+          # Sign PyInstaller's binaries, but leave the bundled Temurin JRE alone:
+          # Adoptium already signs it with the JVM entitlements, and re-signing it
+          # ad-hoc strips those and can stop `java` from running.
+          find "$app" -type f -not -path "*/jre/*" \
+            -exec sh -c 'file "$1" | grep -q "Mach-O" && codesign -f -s - "$1"' _ {} \; 2>/dev/null || true
           codesign -f -s - "$app"
           codesign --verify --verbose=2 "$app"
+          # The bundled JRE must still run after packaging.
+          "$app/Contents/Resources/_internal/jre/bin/java" -version
           echo "bundle:" && find "$app" -maxdepth 3 -type d | head -20
 
       - name: Create the .dmg
