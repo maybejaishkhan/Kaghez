@@ -67,9 +67,13 @@ jobs:
           echo "$(brew --prefix gettext)/bin" >> "$GITHUB_PATH"
           gi_path="$(brew --prefix libadwaita)/lib/girepository-1.0:$(brew --prefix gtk4)/lib/girepository-1.0"
           echo "GI_TYPELIB_PATH=$gi_path" >> "$GITHUB_ENV"
+          # `gi` itself comes from Homebrew's pygobject3, so it isn't pip-installed
+          # here. --ignore-installed makes pip lay down fresh copies instead of
+          # trying to uninstall brew-owned packages (e.g. typing_extensions has no
+          # RECORD file, which makes pip abort with uninstall-no-record-file).
           python3 -m pip install --break-system-packages --upgrade pip
-          python3 -m pip install --break-system-packages \
-            pygobject pyinstaller httpx diskcache babel \
+          python3 -m pip install --break-system-packages --ignore-installed \
+            pyinstaller httpx diskcache babel \
             "gql[aiohttp,websockets,httpx]"
 
       - name: Build resources
