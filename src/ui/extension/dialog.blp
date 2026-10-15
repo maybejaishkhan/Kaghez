@@ -2,60 +2,83 @@ using Gtk 4.0;
 using Adw 1;
 
 template $KaoriExtensionDialog : Adw.Dialog {
-  title: bind template.model as <$KaoriManga> .name;
+  title: bind template.model as <$KaoriExtension> .name;
   can-close: true;
-  content-width: 300;
-  content-height: 300;
+  content-width: 400;
+  content-height: 520;
 
   child: Adw.ToolbarView {
     [top]
-    Adw.HeaderBar {
+    Adw.HeaderBar {}
 
-    }
+    content: Gtk.ScrolledWindow {
+      hscrollbar-policy: never;
 
-    content: Gtk.Box {
-      orientation: vertical;
-      spacing: 12;
+      child: Gtk.Box {
+        orientation: vertical;
+        spacing: 24;
+        margin-top: 12;
+        margin-bottom: 24;
+        margin-start: 12;
+        margin-end: 12;
 
-      Gtk.Image {
-        paintable: bind template.model as <$KaoriExtension> .paintable;
-        pixel-size: 150;
-      }
+        Gtk.Box {
+          orientation: vertical;
+          spacing: 12;
 
-      Gtk.Label {
-        styles [
-          "title-4"
-        ]
-        label: bind template.model as <$KaoriExtension> .name;
-      }
+          Gtk.Image {
+            paintable: bind template.model as <$KaoriExtension> .paintable;
+            pixel-size: 96;
+          }
 
-      Gtk.Box {
-        orientation: horizontal;
-        spacing: 12;
-        halign: center;
-
-        Gtk.Label version {
-          styles [
-          "heading",
-          "dimmed"
-          ]
-          label: bind template.model as <$KaoriExtension> .version_name;
+          Gtk.Label {
+            styles ["title-2"]
+            wrap: true;
+            justify: center;
+            label: bind template.model as <$KaoriExtension> .name;
+          }
         }
 
-        Gtk.Label language {
-          styles [
-          "heading"
-          ]
-          label: bind template.model as <$KaoriExtension> .lang;
+        Adw.PreferencesGroup {
+          Adw.ActionRow {
+            styles ["property"]
+            title: _("Version");
+            subtitle: bind template.model as <$KaoriExtension> .version_name;
+            subtitle-selectable: true;
+          }
+
+          Adw.ActionRow {
+            styles ["property"]
+            title: _("Language");
+            subtitle: bind $get_language(template.model as <$KaoriExtension> .lang) as <string>;
+          }
+
+          Adw.ActionRow {
+            styles ["property"]
+            title: _("Age rating");
+            subtitle: bind $get_age_rating(template.model as <$KaoriExtension> .is_nsfw) as <string>;
+          }
+
+          Adw.ActionRow {
+            styles ["property"]
+            title: _("Status");
+            subtitle: bind $get_status(
+              template.model as <$KaoriExtension> .is_installed,
+              template.model as <$KaoriExtension> .has_update,
+              template.model as <$KaoriExtension> .is_obsolete
+            ) as <string>;
+          }
         }
 
-        Gtk.Label age_rating {
-          styles [
-          "heading"
-          ]
-          label: bind $get_age_rating(template.model as <$KaoriExtension> .is_nsfw) as <string>;
+        Adw.PreferencesGroup {
+          Adw.ActionRow {
+            styles ["property"]
+            title: _("Package");
+            subtitle: bind template.model as <$KaoriExtension> .pkg_name;
+            subtitle-selectable: true;
+          }
         }
-      }
+      };
     };
   };
 }
